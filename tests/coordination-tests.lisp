@@ -2,7 +2,8 @@
 
 ;;;; -- Durable Coordination Tests --
 
-(defvar *coordination-checks* 0)
+(defvar *coordination-checks* 0
+  "The number of assertions the current schedule, mailbox, or completion run has checked.")
 
 (defun coordination--check (value)
   "Record one behavioral assertion."
