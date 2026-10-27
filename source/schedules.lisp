@@ -40,64 +40,64 @@
           (durable-state--fail ':snapshot))
         (let ((identities (make-hash-table :test 'equal)))
           (dolist (schedule (getf data :schedules))
-          (durable-state--plist schedule
-                                '(:id :version :payload :at :interval :event :missed-policy
-                                  :specification :mode :next :cancelled))
-          (durable-state--plist (getf schedule :specification)
-                                '(:id :version :payload :at :interval :event :missed-policy))
-          (dolist (key '(:id :version :payload :at :interval :event :missed-policy))
-            (unless (equal (getf schedule key) (getf (getf schedule :specification) key))
-              (durable-state--fail ':snapshot)))
-            (durable-state--identifier (getf schedule :id))
-            (durable-state--identifier (getf schedule :version))
-            (when (gethash (getf schedule :id) identities)
-              (durable-state--fail ':duplicate-identity))
-            (setf (gethash (getf schedule :id) identities) t)
-            (unless (and (member (getf schedule :mode) '(:time :interval :event))
-                         (member (getf schedule :missed-policy) '(:skip :latest :all))
-                         (typep (getf schedule :cancelled) 'boolean)
-                       (case (getf schedule :mode)
-                         (:event
-                          (and (null (getf schedule :at)) (null (getf schedule :next))
-                               (null (getf schedule :interval))
-                               (progn (durable-state--identifier (getf schedule :event)) t)))
-                         (:time
-                          (and (typep (getf schedule :at) '(integer 0 *))
-                               (null (getf schedule :interval)) (null (getf schedule :event))
-                               (or (null (getf schedule :next))
-                                   (eql (getf schedule :next) (getf schedule :at)))))
-                         (:interval
-                          (and (typep (getf schedule :at) '(integer 0 *))
-                               (typep (getf schedule :next) '(integer 0 *))
-                               (typep (getf schedule :interval) '(integer 1 *))
-                               (null (getf schedule :event))
-                               (>= (getf schedule :next) (getf schedule :at))
-                               (zerop (mod (- (getf schedule :next) (getf schedule :at))
-                                           (getf schedule :interval)))))))
-              (durable-state--fail ':snapshot)))
+           (durable-state--plist schedule
+                                 '(:id :version :payload :at :interval :event :missed-policy
+                                   :specification :mode :next :cancelled))
+           (durable-state--plist (getf schedule :specification)
+                                 '(:id :version :payload :at :interval :event :missed-policy))
+           (dolist (key '(:id :version :payload :at :interval :event :missed-policy))
+             (unless (equal (getf schedule key) (getf (getf schedule :specification) key))
+               (durable-state--fail ':snapshot)))
+           (durable-state--identifier (getf schedule :id))
+           (durable-state--identifier (getf schedule :version))
+           (when (gethash (getf schedule :id) identities)
+             (durable-state--fail ':duplicate-identity))
+           (setf (gethash (getf schedule :id) identities) t)
+           (unless (and (member (getf schedule :mode) '(:time :interval :event))
+                        (member (getf schedule :missed-policy) '(:skip :latest :all))
+                        (typep (getf schedule :cancelled) 'boolean)
+                      (case (getf schedule :mode)
+                        (:event
+                         (and (null (getf schedule :at)) (null (getf schedule :next))
+                              (null (getf schedule :interval))
+                              (progn (durable-state--identifier (getf schedule :event)) t)))
+                        (:time
+                         (and (typep (getf schedule :at) '(integer 0 *))
+                              (null (getf schedule :interval)) (null (getf schedule :event))
+                              (or (null (getf schedule :next))
+                                  (eql (getf schedule :next) (getf schedule :at)))))
+                        (:interval
+                         (and (typep (getf schedule :at) '(integer 0 *))
+                              (typep (getf schedule :next) '(integer 0 *))
+                              (typep (getf schedule :interval) '(integer 1 *))
+                              (null (getf schedule :event))
+                              (>= (getf schedule :next) (getf schedule :at))
+                              (zerop (mod (- (getf schedule :next) (getf schedule :at))
+                                          (getf schedule :interval)))))))
+             (durable-state--fail ':snapshot)))
           (clrhash identities)
           (dolist (wakeup (getf data :wakeups))
-          (durable-state--plist wakeup '(:id :schedule :version :payload :event-data :created-at
-                                        :state :token :result :cancelled))
-            (let ((schedule (durable-state--record data :schedules (getf wakeup :schedule))))
-              (unless (and (equal (getf schedule :version) (getf wakeup :version))
-                         (equal (getf wakeup :payload) (getf schedule :payload))
-                         (scheduler--occurrence-p (getf wakeup :id) schedule)
-                         (or (not (eq (getf wakeup :state) ':pending))
-                             (and (not (getf wakeup :cancelled)) (not (getf schedule :cancelled))
-                                  (not (getf data :closed))))
-                           (member (getf wakeup :state)
-                                   '(:pending :claimed :unknown :completed :failed :cancelled))
-                           (typep (getf wakeup :cancelled) 'boolean)
-                           (typep (getf wakeup :created-at) '(integer 0 *))
-                           (or (null (getf wakeup :token))
-                               (typep (getf wakeup :token)
-                                      `(integer 1 ,(getf data :sequence))))
-                         (or (not (member (getf wakeup :state) '(:claimed :unknown :completed :failed)))
-                               (getf wakeup :token))
-                           (not (gethash (getf wakeup :id) identities)))
-                (durable-state--fail ':snapshot))
-              (setf (gethash (getf wakeup :id) identities) t))))
+           (durable-state--plist wakeup '(:id :schedule :version :payload :event-data :created-at
+                                          :state :token :result :cancelled))
+           (let ((schedule (durable-state--record data :schedules (getf wakeup :schedule))))
+             (unless (and (equal (getf schedule :version) (getf wakeup :version))
+                        (equal (getf wakeup :payload) (getf schedule :payload))
+                        (scheduler--occurrence-p (getf wakeup :id) schedule)
+                        (or (not (eq (getf wakeup :state) ':pending))
+                            (and (not (getf wakeup :cancelled)) (not (getf schedule :cancelled))
+                                 (not (getf data :closed))))
+                        (member (getf wakeup :state)
+                                '(:pending :claimed :unknown :completed :failed :cancelled))
+                        (typep (getf wakeup :cancelled) 'boolean)
+                        (typep (getf wakeup :created-at) '(integer 0 *))
+                        (or (null (getf wakeup :token))
+                            (typep (getf wakeup :token)
+                                   `(integer 1 ,(getf data :sequence))))
+                        (or (not (member (getf wakeup :state) '(:claimed :unknown :completed :failed)))
+                            (getf wakeup :token))
+                        (not (gethash (getf wakeup :id) identities)))
+               (durable-state--fail ':snapshot))
+             (setf (gethash (getf wakeup :id) identities) t))))
         (unless (and (<= (length (getf data :wakeups)) (getf data :capacity))
                      (<= (length (getf data :schedules)) (getf data :capacity)))
           (durable-state--fail ':capacity))
@@ -114,10 +114,10 @@ weakens deduplication; choose a new store namespace when retiring the history."
   (unless (and (functionp clock) (or (null store) (functionp store))
                (typep capacity '(integer 1 *)))
     (durable-state--fail ':configuration))
-  (let* ((data (scheduler--validate
-               (durable-state--copy
-                (or snapshot (list :kind :scheduler :format 1 :sequence 0
-                                   :capacity capacity :closed nil :schedules nil :wakeups nil)))))
+  (let* ((data      (scheduler--validate
+                     (durable-state--copy
+                      (or snapshot (list :kind :scheduler :format 1 :sequence 0
+                                         :capacity capacity :closed nil :schedules nil :wakeups nil)))))
          (scheduler (make-instance 'scheduler :data data :clock clock :store store)))
     (when snapshot
       (durable-state--transaction
@@ -153,16 +153,21 @@ new ID for a replacement version; cancelled IDs cannot be silently resurrected."
   (when event (durable-state--identifier event))
   (let* ((specification (list :id id :version version :payload payload :at at
                              :interval interval :event event :missed-policy missed-policy))
-         (record (append (durable-state--copy specification)
-                         (list :specification (durable-state--copy specification)
-                               :mode (cond (event ':event) (interval ':interval) (t ':time))
-                               :next at :cancelled nil))))
+         (record        (append (durable-state--copy specification)
+                                (list :specification (durable-state--copy specification)
+                                      :mode          (cond (event
+                                                            ':event)
+                                                           (interval
+                                                            ':interval)
+                                                           (t
+                                                            ':time))
+                                      :next at :cancelled nil))))
     (durable-state--transaction
      scheduler
      (lambda (data)
        (scheduler--open data)
        (let ((old (find id (getf data :schedules) :key (lambda (s) (getf s :id))
-                        :test #'equal)))
+                        :test                          #'equal)))
          (when old
            (unless (equal specification (getf old :specification))
              (durable-state--fail ':identity-conflict id))
@@ -201,14 +206,17 @@ due occurrence, refusing the entire transaction if retention capacity is exceede
            (let ((next (getf schedule :next)) (interval (getf schedule :interval)))
              (when (and (not (getf schedule :cancelled)) next (<= next now))
                (let* ((latest (if interval (+ next (* interval (floor (- now next) interval))) next))
-                      (times (case (getf schedule :missed-policy)
-                               (:all (loop for time from next to latest by (or interval 1)
-                                           for count from 1
-                                           do (when (> count (getf data :capacity))
-                                                (durable-state--fail ':capacity))
-                                           collect time))
-                               (:latest (list latest))
-                               (:skip (when (= latest now) (list latest))))))
+                      (times  (case (getf schedule :missed-policy)
+                                (:all
+                                 (loop for time from next to latest by (or interval 1)
+                                       for count from 1
+                                       do (when (> count (getf data :capacity))
+                                            (durable-state--fail ':capacity))
+                                       collect time))
+                                (:latest
+                                 (list latest))
+                                (:skip
+                                 (when (= latest now) (list latest))))))
                  (dolist (time times)
                    (let ((wakeup (scheduler--enqueue data schedule
                                                      :discriminator (list :time time)
@@ -231,7 +239,7 @@ due occurrence, refusing the entire transaction if retention capacity is exceede
            (when (and (eq (getf schedule :mode) ':event)
                       (equal event (getf schedule :event)) (not (getf schedule :cancelled)))
              (let* ((identity (list (getf schedule :id) (getf schedule :version) (list :event id)))
-                    (old (find identity (getf data :wakeups) :key (lambda (w) (getf w :id)) :test #'equal)))
+                    (old      (find identity (getf data :wakeups) :key (lambda (w) (getf w :id)) :test #'equal)))
                (when (and old (not (equal payload (getf old :event-data))))
                  (durable-state--fail ':identity-conflict identity))
                (let ((wakeup (scheduler--enqueue data schedule

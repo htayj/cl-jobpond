@@ -20,7 +20,7 @@ output tail shrinks to *RETAINED-PROGRESS-OUTPUT-LIMIT* characters here."
   (let ((progress (job--progress job)))
     (with-lock-held ((job-progress--lock progress))
       (let* ((output (job-progress--output-tail progress))
-             (start (max 0 (- (length output) *retained-progress-output-limit*))))
+             (start  (max 0 (- (length output) *retained-progress-output-limit*))))
         (setf (job-progress--state progress) state
               (job-progress--output-tail progress) (subseq output start)
               (job-progress--updated-at progress) (get-internal-real-time)))))
@@ -31,7 +31,7 @@ output tail shrinks to *RETAINED-PROGRESS-OUTPUT-LIMIT* characters here."
   (let* ((combined (concatenate 'string
                                 (job-progress--output-tail progress)
                                 text))
-         (start (max 0 (- (length combined) *progress-output-limit*))))
+         (start    (max 0 (- (length combined) *progress-output-limit*))))
     (setf (job-progress--output-tail progress) (subseq combined start)))
   nil)
 
@@ -53,10 +53,10 @@ A job that has already published a terminal result is never aborted again."
                       (job-cancellation-reason job)))))
     (when reason
       (error 'job-aborted
-             :message (format nil "Job ~A was ~(~A~)."
-                              (job-identifier job) reason)
+             :message    (format nil "Job ~A was ~(~A~)."
+                                 (job-identifier job) reason)
              :identifier (job-identifier job)
-             :reason reason))
+             :reason     reason))
     nil))
 
 (defun job-report-progress (job &key (detail nil detail-supplied-p) output
@@ -71,7 +71,7 @@ Every report is also a cancellation point: this signals JOB-ABORTED when a
 controller requested cancellation, so a cooperative body that reports progress
 regularly never needs an interrupt to stop."
   (let ((progress (job--progress job))
-        (event nil))
+        (event    nil))
     (with-lock-held ((job-progress--lock progress))
       (when detail-supplied-p
         (setf (job-progress--detail progress) detail))
@@ -79,12 +79,12 @@ regularly never needs an interrupt to stop."
         (job--append-progress-output progress output))
       (incf (job-progress--step-count progress) steps)
       (setf (job-progress--updated-at progress) (get-internal-real-time)
-            event (list :job job
+            event (list :job        job
                         :identifier (job-identifier job)
-                        :index (job-index job)
-                        :status (job-progress--state progress)
+                        :index      (job-index job)
+                        :status     (job-progress--state progress)
                         :step-count (job-progress--step-count progress)
-                        :detail (job-progress--detail progress))))
+                        :detail     (job-progress--detail progress))))
     (job-pool-emit (job-pool job) :job-progress event))
   (job-check-cancellation job))
 
@@ -98,12 +98,12 @@ The caller holds JOB's lifecycle lock and supplies ENDED-AT from it, so a
 snapshot never mixes a running duration with a terminal state."
   (let ((progress (job--progress job)))
     (with-lock-held ((job-progress--lock progress))
-      (list :identifier (job-identifier job)
-            :index (job-index job)
-            :status (job-progress--state progress)
-            :detail (job-progress--detail progress)
+      (list :identifier    (job-identifier job)
+            :index         (job-index job)
+            :status        (job-progress--state progress)
+            :detail        (job-progress--detail progress)
             :recent-output (job-progress--output-tail progress)
-            :step-count (job-progress--step-count progress)
+            :step-count    (job-progress--step-count progress)
             :duration-milliseconds
             (if (job-progress--started-at progress)
                 (jobpond--milliseconds-between
@@ -118,17 +118,17 @@ snapshot never mixes a running duration with a terminal state."
 
 (defun job--snapshot-locked (job)
   "Return JOB's portable snapshot while its lifecycle lock is held."
-  (list :identifier (job-identifier job)
-        :index (job-index job)
-        :name (job-name job)
-        :state (job-state job)
-        :result (job-result job)
+  (list :identifier          (job-identifier job)
+        :index               (job-index job)
+        :name                (job-name job)
+        :state               (job-state job)
+        :result              (job-result job)
         :cancellation-reason (job-cancellation-reason job)
-        :condition-report (job-condition-report job)
-        :created-at (job-created-at job)
-        :started-at (job-started-at job)
-        :ended-at (job-ended-at job)
-        :progress (job--progress-snapshot job :ended-at (job-ended-at job))))
+        :condition-report    (job-condition-report job)
+        :created-at          (job-created-at job)
+        :started-at          (job-started-at job)
+        :ended-at            (job-ended-at job)
+        :progress            (job--progress-snapshot job :ended-at (job-ended-at job))))
 
 (defun job-snapshot (job)
   "Return JOB's coherent portable lifecycle, result, and progress snapshot."

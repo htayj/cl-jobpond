@@ -26,12 +26,16 @@
                (when (or (> (incf nodes) 100000) (> depth 64))
                  (durable-state--fail ':payload-limit))
                (typecase value
-                 (null nil)
-                 (string (when (> (length value) 1048576)
-                           (durable-state--fail ':payload-limit))
-                         (copy-seq value))
-                 (rational value)
-                 (keyword value)
+                 (null
+                  nil)
+                 (string
+                  (when (> (length value) 1048576)
+                    (durable-state--fail ':payload-limit))
+                  (copy-seq value))
+                 (rational
+                  value)
+                 (keyword
+                  value)
                  (cons
                   (let ((marked nil))
                     (unwind-protect
@@ -49,7 +53,8 @@
                                          (durable-state--fail ':improper-list))
                                        (return result))
                       (dolist (cell marked) (remhash cell active)))))
-                 (t (if (eq value t) t (durable-state--fail ':nonportable-data))))))
+                 (t
+                  (if (eq value t) t (durable-state--fail ':nonportable-data))))))
       (copy-value value 0))))
 
 (defun durable-state--identifier (value)
@@ -91,7 +96,7 @@ If STORE signals, the live state is unchanged; its external write outcome is own
 by the store implementation, which must provide atomic replace semantics."
   (with-lock-held ((durable-state-lock state))
     (unless (durable-state--healthy-p state) (durable-state--fail ':uncertain-store))
-    (let* ((data (durable-state--copy (durable-state-data state)))
+    (let* ((data    (durable-state--copy (durable-state-data state)))
            (results (multiple-value-list (funcall function data))))
       ;; Isolate newly inserted caller data and validate every returned value before persistence.
       (setf data (durable-state--copy data)
@@ -118,13 +123,12 @@ by the store implementation, which must provide atomic replace semantics."
 (defun durable-state--record (data key identity)
   "Find IDENTITY in DATA's KEY records, or signal a typed missing error."
   (or (find identity (getf data key) :key (lambda (record) (getf record :id))
-            :test #'equal)
+            :test                         #'equal)
       (durable-state--fail ':not-found identity)))
 
 (defun durable-state--token (data)
   "Allocate a persisted monotonically increasing claim token."
   (incf (getf data :sequence)))
-
 
 (defun durable-state--plist (value keys)
   "Require exactly KEYS once each in a proper portable property list."

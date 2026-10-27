@@ -29,7 +29,12 @@
       (cl-jobpond:scheduler-add scheduler :id "periodic" :version "v1" :payload '(:work "hello")
                                :at 10 :interval 10 :missed-policy policy)
       (coordination--check (= (length (cl-jobpond:scheduler-wake scheduler))
-                             (case policy (:all 3) (:latest 1) (:skip 0))))
+                             (case policy (:all
+                                           3)
+                                          (:latest
+                                           1)
+                                          (:skip
+                                           0))))
       (coordination--check (= 40 (cl-jobpond:scheduler-next-time scheduler)))
       (coordination--check (null (cl-jobpond:scheduler-wake scheduler)))
       (coordination--check (= 1 (length (cl-jobpond:scheduler-wake scheduler :now 40))))
@@ -48,7 +53,7 @@
       (coordination--fails ':identity-conflict
         (cl-jobpond:scheduler-add scheduler :id "once" :version "v2" :at 20))
       (cl-jobpond:scheduler-wake scheduler)
-      (let* ((claim (cl-jobpond:scheduler-claim scheduler))
+      (let* ((claim     (cl-jobpond:scheduler-claim scheduler))
              (id (getf claim :id)) (token (getf claim :token))
              (recovered (cl-jobpond:make-scheduler :snapshot persisted)))
         (coordination--check (eq ':claimed (getf claim :state)))
@@ -128,8 +133,8 @@
         (cl-jobpond:mailbox-send mailbox :id "m2" :sender "a" :receiver "b"))
       (coordination--fails ':receiver (cl-jobpond:mailbox-receive mailbox :id "m1" :receiver "a"))
       (coordination--check (null (cl-jobpond:mailbox-receive mailbox :receiver "a")))
-      (let* ((claim (cl-jobpond:mailbox-receive mailbox :receiver "b"))
-             (token (getf claim :token))
+      (let* ((claim     (cl-jobpond:mailbox-receive mailbox :receiver "b"))
+             (token     (getf claim :token))
              (recovered (cl-jobpond:make-mailbox :snapshot persisted)))
         (coordination--check (eq ':unknown (getf (cl-jobpond:mailbox-find recovered "m1") :state)))
         (coordination--check (null (cl-jobpond:mailbox-receive recovered :receiver "b")))
@@ -214,7 +219,7 @@
 
 (defun coordination--persistence-tests ()
   "Test real file snapshots, corrupted recovery and interrupted store publication."
-  (let* ((pathname (merge-pathnames (format nil "jobpond-~A.sexp" (gensym)) (uiop:temporary-directory)))
+  (let* ((pathname  (merge-pathnames (format nil "jobpond-~A.sexp" (gensym)) (uiop:temporary-directory)))
          (temporary (make-pathname :type "new" :defaults pathname))
          (scheduler (cl-jobpond:make-scheduler
                      :store (lambda (snapshot)
@@ -226,8 +231,8 @@
            (cl-jobpond:scheduler-add scheduler :id "file" :version "v1" :at 1)
            (cl-jobpond:scheduler-wake scheduler :now 1)
            (let ((claim (cl-jobpond:scheduler-claim scheduler)))
-             (let* ((snapshot (with-open-file (stream pathname)
-                                (let ((*read-eval* nil)) (read stream))))
+             (let* ((snapshot  (with-open-file (stream pathname)
+                                 (let ((*read-eval* nil)) (read stream))))
                     (recovered (cl-jobpond:make-scheduler :snapshot snapshot)))
                (coordination--check (eq ':unknown (getf (first (getf (cl-jobpond:scheduler-snapshot recovered) :wakeups)) :state)))
                (coordination--check (null (cl-jobpond:scheduler-wake recovered :now 2)))

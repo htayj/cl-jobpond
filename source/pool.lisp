@@ -61,271 +61,271 @@
 
 (defclass job-progress ()
   ((lock
-    :initform (make-lock "cl-jobpond job progress")
-    :reader job-progress--lock
+    :initform      (make-lock "cl-jobpond job progress")
+    :reader        job-progress--lock
     :documentation "The lock protecting progress fields read by pool clients.")
    (state
-    :initform :queued
-    :accessor job-progress--state
-    :type keyword
+    :initform      :queued
+    :accessor      job-progress--state
+    :type          keyword
     :documentation "The mirrored :QUEUED, :RUNNING, or terminal job state.")
    (detail
-    :initform nil
-    :accessor job-progress--detail
+    :initform      nil
+    :accessor      job-progress--detail
     :documentation "The newest progress value the job body reported.")
    (output-tail
-    :initform ""
-    :accessor job-progress--output-tail
-    :type string
+    :initform      ""
+    :accessor      job-progress--output-tail
+    :type          string
     :documentation "The bounded tail of output the job body streamed.")
    (step-count
-    :initform 0
-    :accessor job-progress--step-count
-    :type (integer 0)
+    :initform      0
+    :accessor      job-progress--step-count
+    :type          (integer 0)
     :documentation "The progress steps the job body has reported.")
    (started-at
-    :initform nil
-    :accessor job-progress--started-at
+    :initform      nil
+    :accessor      job-progress--started-at
     :documentation "The internal real time execution began, or NIL.")
    (updated-at
-    :initform (get-internal-real-time)
-    :accessor job-progress--updated-at
-    :type integer
+    :initform      (get-internal-real-time)
+    :accessor      job-progress--updated-at
+    :type          integer
     :documentation "The internal real time of the newest progress event."))
   (:documentation "The normalized thread-safe progress record of one job."))
 
 (defclass job-pool ()
   ((name
-    :initarg :name
-    :reader job-pool-name
-    :type string
+    :initarg       :name
+    :reader        job-pool-name
+    :type          string
     :documentation "The human-readable pool name used for thread names.")
    (lock
-    :initform (make-lock "cl-jobpond job pool")
-    :reader job-pool--lock
+    :initform      (make-lock "cl-jobpond job pool")
+    :reader        job-pool--lock
     :documentation "The lock protecting queue, jobs, threads, and listeners.")
    (condition-variable
-    :initform (make-condition-variable)
-    :reader job-pool--condition-variable
+    :initform      (make-condition-variable)
+    :reader        job-pool--condition-variable
     :documentation "The condition waking reusable workers and close waiters.")
    (maximum-concurrency
-    :initarg :maximum-concurrency
-    :accessor job-pool-maximum-concurrency
-    :type (integer 1)
+    :initarg       :maximum-concurrency
+    :accessor      job-pool-maximum-concurrency
+    :type          (integer 1)
     :documentation "The maximum jobs that may execute at the same time.")
    (maximum-batch-size
-    :initarg :maximum-batch-size
-    :accessor job-pool-maximum-batch-size
-    :type (integer 1)
+    :initarg       :maximum-batch-size
+    :accessor      job-pool-maximum-batch-size
+    :type          (integer 1)
     :documentation "The maximum jobs accepted in one atomic admission.")
    (maximum-live-jobs
-    :initarg :maximum-live-jobs
-    :accessor job-pool-maximum-live-jobs
-    :type (integer 1)
+    :initarg       :maximum-live-jobs
+    :accessor      job-pool-maximum-live-jobs
+    :type          (integer 1)
     :documentation "The maximum combined queued and running jobs.")
    (maximum-runtime-milliseconds
-    :initarg :maximum-runtime-milliseconds
-    :accessor job-pool-maximum-runtime-milliseconds
-    :type (integer 0)
+    :initarg       :maximum-runtime-milliseconds
+    :accessor      job-pool-maximum-runtime-milliseconds
+    :type          (integer 0)
     :documentation "The default wall-clock cap for one job, or zero when off.")
    (job-class
-    :initarg :job-class
-    :reader job-pool-job-class
-    :type symbol
+    :initarg       :job-class
+    :reader        job-pool-job-class
+    :type          symbol
     :documentation "The class this pool instantiates for each admitted job.")
    (terminal-retention-limit
-    :initarg :terminal-retention-limit
-    :accessor job-pool-terminal-retention-limit
-    :type (integer 1)
+    :initarg       :terminal-retention-limit
+    :accessor      job-pool-terminal-retention-limit
+    :type          (integer 1)
     :documentation "The number of terminal jobs retained for inspection.")
    (queue
-    :initform nil
-    :accessor job-pool--queue
-    :type list
+    :initform      nil
+    :accessor      job-pool--queue
+    :type          list
     :documentation "The bounded first-in first-out queue of admitted jobs.")
    (worker-threads
-    :initform nil
-    :accessor job-pool--worker-threads
-    :type list
+    :initform      nil
+    :accessor      job-pool--worker-threads
+    :type          list
     :documentation "The reusable worker threads owned by this pool.")
    (monitor-thread
-    :initform nil
-    :accessor job-pool--monitor-thread
+    :initform      nil
+    :accessor      job-pool--monitor-thread
     :documentation "The single deadline monitor thread, or NIL.")
    (shutdown-p
-    :initform nil
-    :accessor job-pool--shutdown-p
-    :type boolean
+    :initform      nil
+    :accessor      job-pool--shutdown-p
+    :type          boolean
     :documentation "True while admission is closed and workers must exit.")
    (lifecycle-state
-    :initform :open
-    :accessor job-pool-lifecycle-state
-    :type keyword
+    :initform      :open
+    :accessor      job-pool-lifecycle-state
+    :type          keyword
     :documentation "The :OPEN, :CLOSING, or :CLOSED pool lifecycle state.")
    (close-owner
-    :initform nil
-    :accessor job-pool--close-owner
+    :initform      nil
+    :accessor      job-pool--close-owner
     :documentation "The thread coordinating shutdown, or NIL between attempts.")
    (active-count
-    :initform 0
-    :accessor job-pool--active-count
-    :type (integer 0)
+    :initform      0
+    :accessor      job-pool--active-count
+    :type          (integer 0)
     :documentation "The jobs currently executing on reusable workers.")
    (live-count
-    :initform 0
-    :accessor job-pool--live-count
-    :type (integer 0)
+    :initform      0
+    :accessor      job-pool--live-count
+    :type          (integer 0)
     :documentation "The admitted queued, running, and publishing jobs.")
    (next-index
-    :initform 0
-    :accessor job-pool--next-index
-    :type (integer 0)
+    :initform      0
+    :accessor      job-pool--next-index
+    :type          (integer 0)
     :documentation "The monotonically increasing job index source.")
    (jobs
-    :initform (make-hash-table :test #'equal)
-    :accessor job-pool--jobs
-    :type hash-table
+    :initform      (make-hash-table :test #'equal)
+    :accessor      job-pool--jobs
+    :type          hash-table
     :documentation "Job identifiers mapped to live and retained terminal jobs.")
    (terminal-identifiers
-    :initform nil
-    :accessor job-pool--terminal-identifiers
-    :type list
+    :initform      nil
+    :accessor      job-pool--terminal-identifiers
+    :type          list
     :documentation "Terminal job identifiers ordered from oldest to newest.")
    (listeners
-    :initform nil
-    :accessor job-pool--listeners
-    :type list
+    :initform      nil
+    :accessor      job-pool--listeners
+    :type          list
     :documentation "Callbacks receiving lifecycle and progress events."))
   (:documentation "A bounded pool of reusable workers running supervised jobs."))
 
 (defclass job ()
   ((pool
-    :initarg :pool
-    :reader job-pool
-    :type job-pool
+    :initarg       :pool
+    :reader        job-pool
+    :type          job-pool
     :documentation "The pool that admitted and supervises this job.")
    (identifier
-    :initarg :identifier
-    :reader job-identifier
-    :type string
+    :initarg       :identifier
+    :reader        job-identifier
+    :type          string
     :documentation "The unique identifier this pool assigned to the job.")
    (index
-    :initarg :index
-    :reader job-index
-    :type (integer 1)
+    :initarg       :index
+    :reader        job-index
+    :type          (integer 1)
     :documentation "The admission order of this job within its pool.")
    (name
-    :initarg :name
-    :reader job-name
-    :type (or null string)
+    :initarg       :name
+    :reader        job-name
+    :type          (or null string)
     :documentation "The caller-supplied descriptive name, or NIL.")
    (payload
-    :initarg :payload
-    :reader job-payload
+    :initarg       :payload
+    :reader        job-payload
     :documentation "The caller-supplied value the job body may consult.")
    (owner-identifiers
-    :initarg :owner-identifiers
-    :reader job-owner-identifiers
-    :type list
+    :initarg       :owner-identifiers
+    :reader        job-owner-identifiers
+    :type          list
     :documentation "The identifiers of this job's ancestors, outermost first.")
    (root-identifier
-    :initarg :root-identifier
-    :reader job-root-identifier
-    :type (or null string)
+    :initarg       :root-identifier
+    :reader        job-root-identifier
+    :type          (or null string)
     :documentation "The identifier naming the tree this job belongs to, or NIL.")
    (body-function
-    :initarg :body-function
-    :reader job--body-function
-    :type function
+    :initarg       :body-function
+    :reader        job--body-function
+    :type          function
     :documentation "The caller-supplied body, called with the job as argument.")
    (maximum-runtime-milliseconds
-    :initarg :maximum-runtime-milliseconds
-    :reader job-maximum-runtime-milliseconds
-    :type (integer 0)
+    :initarg       :maximum-runtime-milliseconds
+    :reader        job-maximum-runtime-milliseconds
+    :type          (integer 0)
     :documentation "The wall-clock cap for this job, or zero when disabled.")
    (terminal-result-function
-    :initarg :terminal-result-function
-    :reader job-terminal-result-function
-    :type (or null function)
+    :initarg       :terminal-result-function
+    :reader        job-terminal-result-function
+    :type          (or null function)
     :documentation "The host hook shaping this job's terminal record, or NIL.")
    (inline-only-p
-    :initarg :inline-only-p
-    :reader job-inline-only-p
-    :type boolean
+    :initarg       :inline-only-p
+    :reader        job-inline-only-p
+    :type          boolean
     :documentation "True when only JOB-RUN-INLINE may ever run this job.")
    (inline-claimed-p
-    :initform nil
-    :accessor job--inline-claimed-p
-    :type boolean
+    :initform      nil
+    :accessor      job--inline-claimed-p
+    :type          boolean
     :documentation "True once an inline runner has claimed this unqueued job.")
    (lock
-    :initform (make-lock "cl-jobpond job")
-    :reader job--lock
+    :initform      (make-lock "cl-jobpond job")
+    :reader        job--lock
     :documentation "The lock protecting mutable job lifecycle fields.")
    (condition-variable
-    :initform (make-condition-variable)
-    :reader job--condition-variable
+    :initform      (make-condition-variable)
+    :reader        job--condition-variable
     :documentation "The condition waking waiters after a state transition.")
    (state
-    :initform :queued
-    :accessor job-state
-    :type keyword
+    :initform      :queued
+    :accessor      job-state
+    :type          keyword
     :documentation "The :QUEUED, :RUNNING, :COMPLETED, :FAILED, or :ABORTED state.")
    (publication-claimed-p
-    :initform nil
-    :accessor job--publication-claimed-p
-    :type boolean
+    :initform      nil
+    :accessor      job--publication-claimed-p
+    :type          boolean
     :documentation "True while one writer prepares the terminal publication.")
    (thread
-    :initform nil
-    :accessor job--thread
+    :initform      nil
+    :accessor      job--thread
     :documentation "The reusable worker currently running this job, or NIL.")
    (run-token
-    :initform nil
-    :accessor job-run-token
-    :type (or null string)
+    :initform      nil
+    :accessor      job-run-token
+    :type          (or null string)
     :documentation "The token keeping a delayed interrupt off a later job.")
    (result
-    :initform nil
-    :accessor job-result
+    :initform      nil
+    :accessor      job-result
     :documentation "The value the job body returned, or NIL when it did not.")
    (condition-report
-    :initform nil
-    :accessor job-condition-report
-    :type (or null string)
+    :initform      nil
+    :accessor      job-condition-report
+    :type          (or null string)
     :documentation "The bounded report of the condition that ended the job.")
    (cancellation-reason
-    :initform nil
-    :accessor job-cancellation-reason
-    :type (or null keyword)
+    :initform      nil
+    :accessor      job-cancellation-reason
+    :type          (or null keyword)
     :documentation "The structured reason a controller requested cancellation.")
    (retained-p
-    :initform nil
-    :accessor job--retained-p
-    :type boolean
+    :initform      nil
+    :accessor      job--retained-p
+    :type          boolean
     :documentation "True once terminal retention has accounted for this job.")
    (progress
-    :initform (make-instance 'job-progress)
-    :reader job--progress
-    :type job-progress
+    :initform      (make-instance 'job-progress)
+    :reader        job--progress
+    :type          job-progress
     :documentation "The normalized progress record of this job.")
    (created-at
-    :initform (get-internal-real-time)
-    :reader job-created-at
-    :type integer
+    :initform      (get-internal-real-time)
+    :reader        job-created-at
+    :type          integer
     :documentation "The internal real time at which the pool admitted the job.")
    (started-at
-    :initform nil
-    :accessor job-started-at
+    :initform      nil
+    :accessor      job-started-at
     :documentation "The internal real time execution began, or NIL.")
    (deadline
-    :initform nil
-    :accessor job-deadline
-    :type (or null integer)
+    :initform      nil
+    :accessor      job-deadline
+    :type          (or null integer)
     :documentation "The internal real time the monitor cancels this job.")
    (ended-at
-    :initform nil
-    :accessor job-ended-at
+    :initform      nil
+    :accessor      job-ended-at
     :documentation "The internal real time of terminal publication, or NIL."))
   (:documentation "One supervised execution of a caller-supplied job body."))
 
@@ -361,21 +361,21 @@ Characters outside the alphanumeric, hyphen, and underscore set become hyphens,
 so a caller-supplied name never makes an identifier awkward to read or type."
   (if (null value)
       nil
-      (let* ((trimmed (string-trim '(#\Space #\Tab #\Newline #\Return #\Page)
-                                   value))
+      (let* ((trimmed   (string-trim '(#\Space #\Tab #\Newline #\Return #\Page)
+                                     value))
              (unbounded (string-downcase trimmed))
-             (text (subseq unbounded
-                           0
-                           (min (length unbounded) *identifier-fragment-limit*)))
-             (mapped (map 'string
-                          (lambda (character)
-                            (if (or (alphanumericp character)
-                                    (char= character #\-)
-                                    (char= character #\_))
-                                character
-                                #\-))
-                          text))
-             (fragment (string-trim '(#\-) mapped)))
+             (text      (subseq unbounded
+                                0
+                                (min (length unbounded) *identifier-fragment-limit*)))
+             (mapped    (map 'string
+                             (lambda (character)
+                               (if (or (alphanumericp character)
+                                       (char= character #\-)
+                                       (char= character #\_))
+                                   character
+                                   #\-))
+                             text))
+             (fragment  (string-trim '(#\-) mapped)))
         (if (plusp (length fragment))
             fragment
             nil))))
@@ -421,7 +421,7 @@ pool bound it supplied badly."
                          "The ~(~A~) limit must be at least ~D, not ~S."
                          limit-kind minimum value))
              :limit-kind limit-kind
-             :value value)))
+             :value      value)))
 
 
 ;;;; -- Listeners and Events --
@@ -505,8 +505,8 @@ identifier must be ready for this failure."
     (if job
         job
         (error 'job-not-found
-               :message (format nil "No job named ~A exists in pool ~A."
-                                identifier (job-pool-name pool))
+               :message    (format nil "No job named ~A exists in pool ~A."
+                                   identifier (job-pool-name pool))
                :identifier identifier))))
 
 (defun job-pool-live-jobs (pool)

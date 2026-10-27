@@ -26,16 +26,16 @@
 
 (defun tests--cancellation-policy-return ()
   "Exercise cooperative polling, explicit cancellation checks and worker reuse."
-  (with-test-pool (pool :name "cl-jobpond test cancellation policy"
+  (with-test-pool (pool :name                "cl-jobpond test cancellation policy"
                         :maximum-concurrency 1
-                        :job-class 'tests--cooperative-job)
+                        :job-class           'tests--cooperative-job)
     (dolist (check-p '(nil t))
-      (let* ((started (tests--make-gate))
-             (cleaned (tests--make-gate))
+      (let* ((started  (tests--make-gate))
+             (cleaned  (tests--make-gate))
              (returned (tests--make-gate))
-             (job (job-pool-submit
-                   pool (tests--cooperative-body started cleaned
-                                                 :returned returned :check-p check-p))))
+             (job      (job-pool-submit
+                        pool (tests--cooperative-body started cleaned
+                                                      :returned returned :check-p check-p))))
         (test-assert (tests--gate-await started) "the cooperative body starts")
         (test-assert (job-cancel job :reason :superseded)
                      "the cooperative job accepts its first cancellation")
@@ -58,13 +58,13 @@
 
 (defun tests--cancellation-policy-deadline ()
   "Exercise monitor cancellation and cleanup without an asynchronous interrupt."
-  (let ((started (tests--make-gate))
-        (cleaned (tests--make-gate))
+  (let ((started  (tests--make-gate))
+        (cleaned  (tests--make-gate))
         (returned (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test cooperative deadline"
-                          :maximum-concurrency 1
+    (with-test-pool (pool :name                         "cl-jobpond test cooperative deadline"
+                          :maximum-concurrency          1
                           :maximum-runtime-milliseconds 50
-                          :job-class 'tests--cooperative-job)
+                          :job-class                    'tests--cooperative-job)
       (let ((job (job-pool-submit
                   pool (tests--cooperative-body started cleaned :returned returned))))
         (test-assert (tests--gate-await started) "the deadline body starts")
@@ -79,25 +79,25 @@
 
 (defun tests--cancellation-policy-cascade-and-queue ()
   "Exercise cooperative subtree cancellation with a queued descendant."
-  (with-test-pool (pool :name "cl-jobpond test cooperative cascade"
+  (with-test-pool (pool :name                "cl-jobpond test cooperative cascade"
                         :maximum-concurrency 2
-                        :job-class 'tests--cooperative-job)
+                        :job-class           'tests--cooperative-job)
     (let* ((parent-started (tests--make-gate))
            (parent-cleaned (tests--make-gate))
-           (child-started (tests--make-gate))
-           (child-cleaned (tests--make-gate))
-           (release (tests--make-gate))
-           (queued-ran-p nil)
-           (parent (job-pool-submit
-                    pool (tests--cooperative-body parent-started parent-cleaned
-                                                 :release release)))
-           (child (job-pool-submit
-                   pool (tests--cooperative-body child-started child-cleaned
-                                                :release release)
-                   :owner-identifiers (list (job-identifier parent))))
-           (queued (job-pool-submit
-                    pool (lambda (job) (declare (ignore job)) (setf queued-ran-p t))
-                    :owner-identifiers (list (job-identifier parent)))))
+           (child-started  (tests--make-gate))
+           (child-cleaned  (tests--make-gate))
+           (release        (tests--make-gate))
+           (queued-ran-p   nil)
+           (parent         (job-pool-submit
+                            pool (tests--cooperative-body parent-started parent-cleaned
+                                                         :release release)))
+           (child          (job-pool-submit
+                            pool (tests--cooperative-body child-started child-cleaned
+                                                         :release release)
+                            :owner-identifiers (list (job-identifier parent))))
+           (queued         (job-pool-submit
+                            pool (lambda (job) (declare (ignore job)) (setf queued-ran-p t))
+                            :owner-identifiers (list (job-identifier parent)))))
       (test-assert (tests--gate-await parent-started) "the subtree parent starts")
       (test-assert (tests--gate-await child-started) "the subtree child starts")
       (multiple-value-bind (accepted-p descendants)
@@ -120,12 +120,12 @@
 
 (defun tests--cancellation-policy-shutdown ()
   "Exercise cooperative pool shutdown with prompt body cleanup."
-  (let ((started (tests--make-gate))
-        (cleaned (tests--make-gate))
+  (let ((started  (tests--make-gate))
+        (cleaned  (tests--make-gate))
         (returned (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test cooperative shutdown"
+    (with-test-pool (pool :name                "cl-jobpond test cooperative shutdown"
                           :maximum-concurrency 1
-                          :job-class 'tests--cooperative-job)
+                          :job-class           'tests--cooperative-job)
       (let ((job (job-pool-submit
                   pool (tests--cooperative-body started cleaned :returned returned))))
         (test-assert (tests--gate-await started) "the shutdown body starts")
@@ -139,15 +139,15 @@
 
 (defun tests--cancellation-policy-repeated ()
   "Repeat cooperative cancellation and cleanup on one reusable worker."
-  (with-test-pool (pool :name "cl-jobpond test repeated cooperative cancellation"
+  (with-test-pool (pool :name                "cl-jobpond test repeated cooperative cancellation"
                         :maximum-concurrency 1
-                        :job-class 'tests--cooperative-job)
+                        :job-class           'tests--cooperative-job)
     (dotimes (index 200)
-      (let* ((started (tests--make-gate))
-             (cleaned (tests--make-gate))
+      (let* ((started  (tests--make-gate))
+             (cleaned  (tests--make-gate))
              (returned (tests--make-gate))
-             (job (job-pool-submit
-                   pool (tests--cooperative-body started cleaned :returned returned))))
+             (job      (job-pool-submit
+                        pool (tests--cooperative-body started cleaned :returned returned))))
         (test-assert (tests--gate-await started) "each repeated body starts")
         (test-assert (job-cancel job) "each repeated cancellation is accepted")
         (test-assert (not (job-cancel job)) "each duplicate cancellation is declined")

@@ -35,11 +35,11 @@ this nesting cannot deadlock against admission or the worker loop."
 The job itself is carried on the event. A listener that wants more than the
 status has to reach the job for it, and looking one up by identifier would fail
 exactly when terminal retention has already evicted it."
-  (list :job job
+  (list :job        job
         :identifier (job-identifier job)
-        :index (job-index job)
-        :name (job-name job)
-        :status status))
+        :index      (job-index job)
+        :name       (job-name job)
+        :status     status))
 
 
 ;;;; -- Host Terminal Records --
@@ -107,12 +107,12 @@ reports success.
 The job's :TERMINAL-RESULT-FUNCTION, when it has one, then decides what the
 terminal record actually contains. See JOB--RESOLVE-TERMINAL-RECORD."
   (let ((*terminal-publication-job* job)
-        (publish-p nil)
-        (state requested-state)
-        (reason nil)
-        (final-result result)
-        (final-report report)
-        (event nil))
+        (publish-p                  nil)
+        (state                      requested-state)
+        (reason                     nil)
+        (final-result               result)
+        (final-report               report)
+        (event                      nil))
     (with-lock-held ((job--lock job))
       (unless (or (job--terminal-state-p (job-state job))
                   (job--publication-claimed-p job))
@@ -166,13 +166,13 @@ worker gave up on it. Waiters are always woken, even when the state was already
 terminal, so a lost broadcast cannot strand them."
   (let* ((reason (with-lock-held ((job--lock job))
                    (job-cancellation-reason job)))
-         (state (if reason :aborted :failed))
+         (state  (if reason :aborted :failed))
          (report
            (jobpond--bounded-string
             (format nil "Job failure: ~A; publication failure: ~A"
                     execution-condition publication-condition)))
          (result (job--force-terminal-record job state report))
-         (event nil))
+         (event  nil))
     (with-lock-held ((job--lock job))
       (unless (job--terminal-state-p (job-state job))
         (job--compact-progress job state)
@@ -202,7 +202,7 @@ Returns NIL when the job was cancelled or already started, in which case the
 caller must not run its body. The caller holds JOB's lifecycle lock."
   (if (and (eq (job-state job) :queued)
            (null (job-cancellation-reason job)))
-      (let ((now (get-internal-real-time))
+      (let ((now     (get-internal-real-time))
             (runtime (job-maximum-runtime-milliseconds job)))
         (setf (job-state job) :running
               (job--thread job) (current-thread)
@@ -225,8 +225,8 @@ publishes :COMPLETED with the returned value, signalling JOB-ABORTED publishes
 
 *CURRENT-JOB* and *CURRENT-RUN-TOKEN* are bound around the body so a cancellation
 interrupt delivered to this thread can prove it still belongs to this run."
-  (let ((pool (job-pool job))
-        (token (job--next-run-token))
+  (let ((pool      (job-pool job))
+        (token     (job--next-run-token))
         (started-p nil))
     (with-lock-held ((job--lock job))
       (setf started-p (job--start-locked job token))
@@ -234,7 +234,7 @@ interrupt delivered to this thread can prove it still belongs to this run."
         (job--set-progress-state job :running)))
     (when started-p
       (job-pool-emit pool :job-lifecycle (job--lifecycle-event job :started))
-      (let ((*current-job* job)
+      (let ((*current-job*       job)
             (*current-run-token* token))
         (handler-case
             (job--publish-terminal

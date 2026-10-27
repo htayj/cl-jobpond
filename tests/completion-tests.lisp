@@ -14,27 +14,27 @@
 
 (defun completion-tests--restore ()
   "Exercise deduplication and restart on both sides of the delivery boundary."
-  (let* ((persisted nil)
+  (let* ((persisted    nil)
          (subscription (cl-jobpond:make-completion-subscription
                         :store (lambda (state)
                                  (setf persisted (coordination--roundtrip state)))))
-         (snapshot (completion-tests--snapshot "local-1" ':completed)))
+         (snapshot     (completion-tests--snapshot "local-1" ':completed)))
     (cl-jobpond:completion-subscription-replay subscription snapshot :id "execution-uuid")
     (coordination--check
      (nth-value 1 (cl-jobpond:completion-subscription-replay subscription snapshot
                                                            :id "execution-uuid")))
     (coordination--check (= 1 (length (completion-tests--messages subscription))))
     (let* ((restored (cl-jobpond:make-completion-subscription :snapshot persisted))
-           (record (first (cl-jobpond:completion-subscription-collect restored))))
+           (record   (first (cl-jobpond:completion-subscription-collect restored))))
       (coordination--check (equal "execution-uuid" (getf record :id)))
       (coordination--check (eq ':success (getf (getf record :payload) :outcome)))
       (coordination--check
        (equal "local-1" (getf (getf (getf record :payload) :snapshot) :identifier)))
       (coordination--check (null (cl-jobpond:completion-subscription-collect restored)))
-      (let* ((claimed (coordination--roundtrip
-                       (cl-jobpond:completion-subscription-snapshot restored)))
+      (let* ((claimed   (coordination--roundtrip
+                         (cl-jobpond:completion-subscription-snapshot restored)))
              (uncertain (cl-jobpond:make-completion-subscription :snapshot claimed))
-             (unknown (first (completion-tests--messages uncertain))))
+             (unknown   (first (completion-tests--messages uncertain))))
         (coordination--check (eq ':unknown (getf unknown :state)))
         (coordination--check (eq ':success (getf (getf unknown :payload) :outcome)))
         (coordination--check (null (cl-jobpond:completion-subscription-collect uncertain)))
@@ -45,10 +45,10 @@
           (coordination--check (> (getf retry :token) (getf record :token)))
           (coordination--fails ':stale-token
             (cl-jobpond:completion-subscription-ack uncertain :id (getf retry :id)
-                                                   :token (getf record :token)))
+                                                   :token         (getf record :token)))
           (cl-jobpond:completion-subscription-ack uncertain :id (getf retry :id)
-                                                 :token (getf retry :token)
-                                                 :result '(:receipt "conversation-42"))
+                                                 :token         (getf retry :token)
+                                                 :result        '(:receipt "conversation-42"))
           (let ((delivered (cl-jobpond:make-completion-subscription
                             :snapshot (cl-jobpond:completion-subscription-snapshot uncertain))))
             (coordination--check
@@ -72,15 +72,15 @@
 
 (defun completion-tests--publication ()
   "Exercise preadmission attachment, concurrent production and bounded batching."
-  (let* ((pool (make-job-pool :maximum-concurrency 4 :maximum-live-jobs 32
-                             :maximum-batch-size 32))
-         (gate (tests--make-gate))
-         (wake (tests--make-gate))
+  (let* ((pool         (make-job-pool :maximum-concurrency 4 :maximum-live-jobs 32
+                                     :maximum-batch-size 32))
+         (gate         (tests--make-gate))
+         (wake         (tests--make-gate))
          (subscription nil)
-         (jobs nil))
+         (jobs         nil))
     (setf subscription
           (cl-jobpond:make-completion-subscription
-           :capacity 32
+           :capacity          32
            :identity-function (lambda (job snapshot)
                                 (declare (ignore snapshot)) (job-payload job))
            :snapshot-function
@@ -91,16 +91,16 @@
              (job-pool-list-jobs pool)
              (cl-jobpond:completion-subscription-snapshot subscription)
              snapshot)
-           :wakeup (lambda (subscription)
-                     (cl-jobpond:completion-subscription-snapshot subscription)
-                     (tests--gate-open wake))))
+           :wakeup            (lambda (subscription)
+                                (cl-jobpond:completion-subscription-snapshot subscription)
+                                (tests--gate-open wake))))
     (unwind-protect
          (progn
            (cl-jobpond:completion-subscription-attach subscription pool)
            (setf jobs
                  (job-pool-submit-batch
                   pool (loop for index below 24
-                             collect (list :payload (format nil "uuid-~D" index)
+                             collect (list :payload  (format nil "uuid-~D" index)
                                            :function (lambda (job)
                                                        (tests--gate-await gate)
                                                        (job-payload job))))))
@@ -115,8 +115,8 @@
                                                                 (lambda (record) (getf record :id))
                                                                 :test #'equal)))))
            (coordination--check (= 17 (length
-                                      (cl-jobpond:completion-subscription-collect subscription
-                                                                                :limit 32))))
+                                       (cl-jobpond:completion-subscription-collect subscription
+                                                                                 :limit 32))))
            (coordination--check (null (cl-jobpond:completion-subscription-collect subscription)))
            ;; Replay even an evicted terminal object and race duplicate watches.
            (let ((threads (loop repeat 8
@@ -135,12 +135,12 @@
          (fail t) (persisted nil)
          (subscription
            (cl-jobpond:make-completion-subscription
-            :store (lambda (state)
-                     (when fail (error "Atomic store refused"))
-                     (setf persisted (coordination--roundtrip state)))
+            :store  (lambda (state)
+                      (when fail (error "Atomic store refused"))
+                      (setf persisted (coordination--roundtrip state)))
             :wakeup (lambda (subscription)
                       (declare (ignore subscription)) (error "Wakeup refused"))))
-         (job (job-pool-submit pool (lambda (job) (declare (ignore job)) (error "Body failed")))))
+         (job  (job-pool-submit pool (lambda (job) (declare (ignore job)) (error "Body failed")))))
     (unwind-protect
          (progn
            (handler-case (cl-jobpond:completion-subscription-watch subscription job)
@@ -153,17 +153,17 @@
            (setf fail nil)
            (coordination--check (= 1 (cl-jobpond:completion-subscription-refresh subscription)))
            (let* ((record (first (cl-jobpond:completion-subscription-collect subscription)))
-                  (event (getf record :payload)))
+                  (event  (getf record :payload)))
              (coordination--check (eq ':failure (getf event :outcome)))
              (coordination--check (search "Body failed"
                                           (getf (getf event :snapshot) :condition-report))))
            (coordination--check (stringp (cl-jobpond:completion-subscription-error subscription))))
       (cl-jobpond:completion-subscription-close subscription)
       (job-pool-close pool)))
-  (let* ((pool (make-job-pool :maximum-concurrency 1))
+  (let* ((pool         (make-job-pool :maximum-concurrency 1))
          (subscription (cl-jobpond:make-completion-subscription))
-         (job (job-pool-submit pool (lambda (job) (declare (ignore job)) "never")
-                              :inline-only-p t)))
+         (job          (job-pool-submit pool (lambda (job) (declare (ignore job)) "never")
+                                       :inline-only-p t)))
     (unwind-protect
          (progn
            (cl-jobpond:completion-subscription-watch subscription job :id "cancelled-uuid")
@@ -205,13 +205,13 @@
             :snapshot-function (lambda (job snapshot)
                                  (declare (ignore job))
                                  (when fail (error "Projection refused")) snapshot)
-            :wakeup (lambda (subscription)
-                      (declare (ignore subscription)) (incf wake-count))))
-         (job (job-pool-submit pool
-                               (lambda (job)
-                                 (declare (ignore job))
-                                 (tests--gate-open entered)
-                                 (tests--gate-await gate) "complete"))))
+            :wakeup            (lambda (subscription)
+                                 (declare (ignore subscription)) (incf wake-count))))
+         (job  (job-pool-submit pool
+                                (lambda (job)
+                                  (declare (ignore job))
+                                  (tests--gate-open entered)
+                                  (tests--gate-await gate) "complete"))))
     (unwind-protect
          (progn
            (coordination--check (tests--gate-await entered))
@@ -257,9 +257,9 @@
 
 (defun completion-tests--forget ()
   "Deliver beyond bounded history while preserving watches and in-flight claims."
-  (let* ((pool (make-job-pool :maximum-concurrency 1))
-         (gate (tests--make-gate))
-         (receipts (make-hash-table :test 'equal))
+  (let* ((pool         (make-job-pool :maximum-concurrency 1))
+         (gate         (tests--make-gate))
+         (receipts     (make-hash-table :test 'equal))
          (subscription (cl-jobpond:make-completion-subscription
                         :capacity 4 :history-limit 4
                         :identity-function (lambda (job snapshot)
@@ -268,8 +268,8 @@
                                                (job-identifier job))))))
     (unwind-protect
          (let ((job (job-pool-submit pool (lambda (job)
-                                          (declare (ignore job))
-                                          (tests--gate-await gate) "watched"))))
+                                           (declare (ignore job))
+                                           (tests--gate-await gate) "watched"))))
            (cl-jobpond:completion-subscription-watch subscription job)
            (cl-jobpond:completion-subscription-replay
             subscription (completion-tests--snapshot "retained" ':failed))
@@ -282,7 +282,7 @@
                    (coordination--check (equal id (getf record :id)))
                    (setf (gethash id receipts) t)
                    (cl-jobpond:completion-subscription-ack subscription :id id
-                                                         :token (getf record :token))
+                                                         :token             (getf record :token))
                    (coordination--check
                     (= 1 (cl-jobpond:completion-subscription-forget subscription :ids (list id)))))))
              (coordination--check (equal (list retained) (completion-tests--messages subscription)))
@@ -293,12 +293,12 @@
                (coordination--check (equal "watched" (getf (getf (getf record :payload) :snapshot) :result)))
                (setf (gethash (getf record :id) receipts) t)
                (cl-jobpond:completion-subscription-ack subscription :id (getf record :id)
-                                                     :token (getf record :token))
+                                                     :token             (getf record :token))
                (cl-jobpond:completion-subscription-forget subscription :ids (list (getf record :id)))
                (cl-jobpond:completion-subscription-watch subscription job)
                (coordination--check (equal (list retained) (completion-tests--messages subscription))))
              (cl-jobpond:completion-subscription-ack subscription :id "retained"
-                                                   :token (getf retained :token))
+                                                   :token             (getf retained :token))
              (cl-jobpond:completion-subscription-forget subscription :ids '("retained"))
              (coordination--check (null (completion-tests--messages subscription)))))
       (tests--gate-open gate)
@@ -307,12 +307,12 @@
 
 (defun completion-tests--retired-refresh ()
   "Do not republish a retired watch from an in-flight concurrent conversion."
-  (let* ((pool (make-job-pool :maximum-concurrency 1))
-         (body-gate (tests--make-gate))
+  (let* ((pool               (make-job-pool :maximum-concurrency 1))
+         (body-gate          (tests--make-gate))
          (conversion-entered (tests--make-gate))
          (conversion-release (tests--make-gate))
-         (lock (make-lock "Conversion order"))
-         (conversions 0)
+         (lock               (make-lock "Conversion order"))
+         (conversions        0)
          (subscription
            (cl-jobpond:make-completion-subscription
             :snapshot-function
@@ -336,7 +336,7 @@
              (coordination--check (equal "completed"
                                          (getf (getf (getf record :payload) :snapshot) :result)))
              (cl-jobpond:completion-subscription-ack subscription :id (getf record :id)
-                                                   :token (getf record :token))
+                                                   :token             (getf record :token))
              (coordination--check
               (= 1 (cl-jobpond:completion-subscription-forget subscription
                                                               :ids (list (getf record :id))))))

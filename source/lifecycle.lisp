@@ -97,7 +97,7 @@ read under the pool lock, but the two locks are never held at the same time in
 this direction, so the monitor cannot deadlock against terminal publication."
   (loop
     (let ((expired nil)
-          (jobs nil))
+          (jobs    nil))
       (with-lock-held ((job-pool--lock pool))
         (when (job-pool--shutdown-p pool)
           (return-from job-pool--monitor-loop nil))
@@ -171,12 +171,12 @@ real accessors instead of inside the payload."
                (find-class job-class nil)
                (subtypep job-class 'job))
     (error 'job-pool-invalid-limit
-           :message ":JOB-CLASS must name JOB or a subclass of it."
+           :message    ":JOB-CLASS must name JOB or a subclass of it."
            :limit-kind :job-class
-           :value job-class))
+           :value      job-class))
   (let ((pool (make-instance
                'job-pool
-               :name name
+               :name      name
                :job-class job-class
                :maximum-concurrency
                (job-pool--validate-limit :maximum-concurrency
@@ -275,8 +275,8 @@ because its previous workers may still be unwinding cancelled jobs."
     (job-pool--reap-dead-threads-locked pool)
     (when (eq (job-pool-lifecycle-state pool) :closing)
       (error 'job-pool-closed
-             :message (format nil "Pool ~A is still shutting down."
-                              (job-pool-name pool))
+             :message         (format nil "Pool ~A is still shutting down."
+                                      (job-pool-name pool))
              :lifecycle-state :closing))
     (when (eq (job-pool-lifecycle-state pool) :closed)
       (setf (job-pool-lifecycle-state pool) :open))
@@ -328,9 +328,9 @@ for the jobs that matter with JOB-AWAIT before closing.
 
 Closing is idempotent and safe from several threads at once. One caller becomes
 the close owner and the others wait for its result."
-  (let ((owner-p nil)
-        (jobs nil)
-        (threads nil)
+  (let ((owner-p  nil)
+        (jobs     nil)
+        (threads  nil)
         (deadline (+ (get-internal-real-time)
                      (* *shutdown-timeout-seconds*
                         internal-time-units-per-second))))
@@ -401,14 +401,14 @@ JOB-POOL-DETACH-REFUSED rather than losing track of running work."
       (error 'job-pool-detach-refused
              :message (format nil "Pool ~A must close before it can detach."
                               (job-pool-name pool))
-             :reason :not-closed))
+             :reason  :not-closed))
     (when (or (some #'thread-alive-p (job-pool--worker-threads pool))
               (let ((monitor (job-pool--monitor-thread pool)))
                 (and monitor (thread-alive-p monitor))))
       (error 'job-pool-detach-refused
              :message (format nil "Pool ~A cannot detach while its threads live."
                               (job-pool-name pool))
-             :reason :threads-alive))
+             :reason  :threads-alive))
     (setf (job-pool--worker-threads pool) nil
           (job-pool--monitor-thread pool) nil
           (job-pool--queue pool) nil

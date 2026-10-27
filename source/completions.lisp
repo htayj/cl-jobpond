@@ -16,8 +16,8 @@ Persisted nonterminal states reconstruct an UNKNOWN outcome, never success.
 ID defaults to the job identifier. Supply a durable caller identity across restarts.
 Opaque result/progress values require caller conversion before this function."
   (let* ((snapshot (durable-state--copy snapshot))
-         (id (or id (getf snapshot :identifier)))
-         (state (getf snapshot :state)))
+         (id       (or id (getf snapshot :identifier)))
+         (state    (getf snapshot :state)))
     (durable-state--identifier id)
     (durable-state--plist snapshot
                           '(:identifier :index :name :state :result
@@ -26,13 +26,19 @@ Opaque result/progress values require caller conversion before this function."
     (unless (member state '(:queued :running :completed :failed :aborted :unknown))
       (durable-state--fail ':state id))
     (list :format 1 :id id :job-id id
-          :outcome (case state (:completed :success) (:failed :failure)
-                         (:aborted :cancelled) (otherwise :unknown))
+          :outcome  (case state (:completed
+                                 :success)
+                          (:failed
+                           :failure)
+                          (:aborted
+                           :cancelled)
+                          (otherwise
+                           :unknown))
           :snapshot snapshot)))
 
 (defclass completion-subscription ()
-  ((lock :initform (make-lock "Completion subscription")
-         :reader completion-subscription--lock
+  ((lock :initform      (make-lock "Completion subscription")
+         :reader        completion-subscription--lock
          :documentation "Serializes watches, enqueue and closure.")
    (mailbox :initarg :mailbox :reader completion-subscription-mailbox
             :documentation "Acknowledged portable event storage and delivery history.")
@@ -46,11 +52,11 @@ Opaque result/progress values require caller conversion before this function."
              :documentation "True after detaching all producer listeners.")
    (wakeup :initarg :wakeup :reader completion-subscription--wakeup
            :documentation "Optional short function called outside all locks.")
-   (identity-function :initarg :identity-function
-                      :reader completion-subscription--identity-function
+   (identity-function :initarg       :identity-function
+                      :reader        completion-subscription--identity-function
                       :documentation "Resolve a stable caller identity from JOB and its snapshot.")
-   (snapshot-function :initarg :snapshot-function
-                      :reader completion-subscription--snapshot-function
+   (snapshot-function :initarg       :snapshot-function
+                      :reader        completion-subscription--snapshot-function
                       :documentation "Convert a coherent job snapshot to portable data.")
    (error :initform nil :accessor completion-subscription--error
           :documentation "Newest producer or wakeup failure report, or NIL."))
@@ -82,9 +88,9 @@ use MAILBOX-RESOLVE explicitly to retry after checking caller delivery history."
   (let ((mailbox (make-mailbox :capacity capacity :history-limit history-limit
                                :store store :snapshot snapshot)))
     (make-instance 'completion-subscription :mailbox mailbox
-                   :capacity (getf (mailbox-snapshot mailbox) :capacity)
+                   :capacity                         (getf (mailbox-snapshot mailbox) :capacity)
                    :wakeup wakeup :snapshot-function snapshot-function
-                   :identity-function identity-function)))
+                   :identity-function                identity-function)))
 
 (defun completion-subscription-error (subscription)
   "Return the newest callback failure report as an isolated string, or NIL."
@@ -119,7 +125,7 @@ A conversion whose exact watch was retired concurrently cannot enqueue another e
 Failed watches retain job references after pool eviction for an explicit retry.
 Enqueue order defines delivery order. Explicit calls propagate failures; listeners
 retain the failure report and wake the caller."
-  (let ((count 0)
+  (let ((count   0)
         (watches (with-lock-held ((completion-subscription--lock subscription))
                    (unless (completion-subscription--closed-p subscription)
                      (copy-list (completion-subscription--watches subscription))))))
@@ -128,7 +134,7 @@ retain the failure report and wake the caller."
         (when (member (getf snapshot :state) '(:completed :failed :aborted))
           (let* ((converted (funcall (completion-subscription--snapshot-function subscription)
                                     job snapshot))
-                 (event (completion-event converted :id (rest watch))))
+                 (event     (completion-event converted :id (rest watch))))
             (unless (and (equal (getf converted :identifier) (job-identifier job))
                          (eq (getf converted :state) (getf snapshot :state)))
               (durable-state--fail ':identity-conflict (rest watch)))
@@ -150,8 +156,8 @@ retain the failure report and wake the caller."
                          (member (getf event :status) '(:completed :failed :aborted)))
                 (handler-case
                     (let* ((job (getf event :job))
-                           (id (when identity-function
-                                 (funcall identity-function job (job-snapshot job)))))
+                           (id  (when identity-function
+                                  (funcall identity-function job (job-snapshot job)))))
                       (if id
                           (completion-subscription-watch subscription job :id id)
                           (completion-subscription-refresh subscription)))

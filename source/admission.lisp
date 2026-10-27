@@ -9,7 +9,7 @@
         function
         (error 'job-pool-invalid-entry
                :message "A submission entry needs a :FUNCTION of one argument."
-               :entry entry))))
+               :entry   entry))))
 
 (defun job-pool--entry-runtime-override (entry)
   "Return ENTRY's validated wall-clock cap override, or NIL for the pool default.
@@ -33,7 +33,7 @@ policy update and admission agree on one complete policy boundary."
                         owners))
       (error 'job-pool-invalid-entry
              :message ":OWNER-IDENTIFIERS must be a list of non-empty strings."
-             :entry entry))
+             :entry   entry))
     (copy-list owners)))
 
 (defun job-pool--entry-root-identifier (entry)
@@ -43,7 +43,7 @@ policy update and admission agree on one complete policy boundary."
                 (and (stringp root) (plusp (length root))))
       (error 'job-pool-invalid-entry
              :message ":ROOT-IDENTIFIER must be NIL or a non-empty string."
-             :entry entry))
+             :entry   entry))
     root))
 
 (defun job-pool--entry-initargs (entry)
@@ -52,7 +52,7 @@ policy update and admission agree on one complete policy boundary."
     (unless (and (listp initargs) (evenp (length initargs)))
       (error 'job-pool-invalid-entry
              :message ":INITARGS must be a plist of initialization arguments."
-             :entry entry))
+             :entry   entry))
     (copy-list initargs)))
 
 (defun job-pool--entry-terminal-result-function (entry)
@@ -61,7 +61,7 @@ policy update and admission agree on one complete policy boundary."
     (unless (or (null function) (functionp function))
       (error 'job-pool-invalid-entry
              :message ":TERMINAL-RESULT-FUNCTION must be a function or NIL."
-             :entry entry))
+             :entry   entry))
     function))
 
 (defun job-pool--entry-inline-only-p (entry)
@@ -75,7 +75,7 @@ policy update and admission agree on one complete policy boundary."
         name
         (error 'job-pool-invalid-entry
                :message "A submission entry :NAME must be a string or NIL."
-               :entry entry))))
+               :entry   entry))))
 
 
 ;;;; -- Atomic Admission --
@@ -86,21 +86,21 @@ policy update and admission agree on one complete policy boundary."
 The identifier ends in the admission index, so identifiers stay unique without
 reserving names and terminal retention can evict a job without freeing a name."
   (incf (job-pool--next-index pool))
-  (let* ((index (job-pool--next-index pool))
-         (name (getf entry :name))
+  (let* ((index    (job-pool--next-index pool))
+         (name     (getf entry :name))
          (fragment (or (jobpond--identifier-fragment name) "job")))
     (apply #'make-instance
            (job-pool-job-class pool)
-           :pool pool
-           :identifier (format nil "~A-~D" fragment index)
-           :index index
-           :name name
-           :payload (getf entry :payload)
-           :owner-identifiers (getf entry :owner-identifiers)
-           :root-identifier (getf entry :root-identifier)
-           :body-function (getf entry :function)
+           :pool                     pool
+           :identifier               (format nil "~A-~D" fragment index)
+           :index                    index
+           :name                     name
+           :payload                  (getf entry :payload)
+           :owner-identifiers        (getf entry :owner-identifiers)
+           :root-identifier          (getf entry :root-identifier)
+           :body-function            (getf entry :function)
            :terminal-result-function (getf entry :terminal-result-function)
-           :inline-only-p (getf entry :inline-only-p)
+           :inline-only-p            (getf entry :inline-only-p)
            :maximum-runtime-milliseconds
            (or (getf entry :maximum-runtime-milliseconds)
                (job-pool-maximum-runtime-milliseconds pool))
@@ -141,8 +141,8 @@ JOB-POOL-CLOSED without changing the pool."
   (let* ((normalized
            (mapcar (lambda (entry)
                      (list :function (job-pool--entry-function entry)
-                           :name (job-pool--entry-name entry)
-                           :payload (getf entry :payload)
+                           :name     (job-pool--entry-name entry)
+                           :payload  (getf entry :payload)
                            :owner-identifiers
                            (job-pool--entry-owner-identifiers entry)
                            :root-identifier
@@ -156,35 +156,35 @@ JOB-POOL-CLOSED without changing the pool."
                            (job-pool--entry-runtime-override entry)))
                    entries))
          (count (length normalized))
-         (jobs nil))
+         (jobs  nil))
     (when (zerop count)
       (return-from job-pool-submit-batch nil))
     (with-lock-held ((job-pool--lock pool))
       (when (or (job-pool--shutdown-p pool)
                 (not (eq (job-pool-lifecycle-state pool) :open)))
         (error 'job-pool-closed
-               :message (format nil "Pool ~A is not accepting jobs."
-                                (job-pool-name pool))
+               :message         (format nil "Pool ~A is not accepting jobs."
+                                        (job-pool-name pool))
                :lifecycle-state (job-pool-lifecycle-state pool)))
       (when (> count (job-pool-maximum-batch-size pool))
         (error 'job-pool-capacity-exceeded
-               :message (format nil "Pool ~A admits at most ~D jobs per batch."
-                                (job-pool-name pool)
-                                (job-pool-maximum-batch-size pool))
-               :limit-kind :batch-size
-               :limit (job-pool-maximum-batch-size pool)
+               :message         (format nil "Pool ~A admits at most ~D jobs per batch."
+                                        (job-pool-name pool)
+                                        (job-pool-maximum-batch-size pool))
+               :limit-kind      :batch-size
+               :limit           (job-pool-maximum-batch-size pool)
                :requested-count count
-               :live-count (job-pool--live-count pool)))
+               :live-count      (job-pool--live-count pool)))
       (when (> (+ (job-pool--live-count pool) count)
                (job-pool-maximum-live-jobs pool))
         (error 'job-pool-capacity-exceeded
-               :message (format nil "Pool ~A admits at most ~D live jobs."
-                                (job-pool-name pool)
-                                (job-pool-maximum-live-jobs pool))
-               :limit-kind :live-jobs
-               :limit (job-pool-maximum-live-jobs pool)
+               :message         (format nil "Pool ~A admits at most ~D live jobs."
+                                        (job-pool-name pool)
+                                        (job-pool-maximum-live-jobs pool))
+               :limit-kind      :live-jobs
+               :limit           (job-pool-maximum-live-jobs pool)
                :requested-count count
-               :live-count (job-pool--live-count pool)))
+               :live-count      (job-pool--live-count pool)))
       (setf jobs (mapcar (lambda (entry)
                            (job-pool--create-job-locked pool entry))
                          normalized)
@@ -211,13 +211,13 @@ FUNCTION is called with the job as its only argument. Returning a value publishe
 signalling any other error publishes :FAILED with a bounded condition report."
   (first (job-pool-submit-batch
           pool
-          (list (list :function function
-                      :name name
-                      :payload payload
-                      :owner-identifiers owner-identifiers
-                      :root-identifier root-identifier
+          (list (list :function                 function
+                      :name                     name
+                      :payload                  payload
+                      :owner-identifiers        owner-identifiers
+                      :root-identifier          root-identifier
                       :terminal-result-function terminal-result-function
-                      :inline-only-p inline-only-p
+                      :inline-only-p            inline-only-p
                       :maximum-runtime-milliseconds
                       maximum-runtime-milliseconds)))))
 
@@ -235,7 +235,7 @@ when JOB was already claimed, cancelled, or started.
 
 A job admitted with :INLINE-ONLY-P was never queued, so nothing can race this
 claim in the first place and it is taken with a flag on the job instead."
-  (let ((pool (job-pool job))
+  (let ((pool      (job-pool job))
         (claimed-p nil))
     (with-lock-held ((job--lock job))
       (when (and (eq (job-state job) :queued)

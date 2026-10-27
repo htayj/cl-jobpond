@@ -85,7 +85,7 @@ An interrupt is best effort. A body that blocks where the host cannot deliver
 interrupts stops at its next JOB-CHECK-CANCELLATION or JOB-REPORT-PROGRESS call
 instead."
   (let ((accepted-p (job--cancel-one job reason))
-        (cascaded nil))
+        (cascaded   nil))
     (when cascade-p
       (dolist (descendant (job-pool-descendant-jobs (job-pool job)
                                                     (job-identifier job)))
@@ -95,11 +95,11 @@ instead."
 
 (defun job--cancel-one (job reason)
   "Request cancellation of exactly JOB for REASON, ignoring any descendants."
-  (let ((pool (job-pool job))
-        (thread nil)
+  (let ((pool      (job-pool job))
+        (thread    nil)
         (run-token nil)
-        (queued-p nil)
-        (cancel-p nil))
+        (queued-p  nil)
+        (cancel-p  nil))
     (with-lock-held ((job--lock job))
       (unless (or (job--terminal-state-p (job-state job))
                   (job--publication-claimed-p job)
@@ -128,8 +128,8 @@ instead."
          (lambda ()
            (when (job--cancellation-interrupt-applicable-p job run-token)
              (error 'job-aborted
-                    :message (format nil "Job ~A was ~(~A~)."
-                                     (job-identifier job) reason)
+                    :message    (format nil "Job ~A was ~(~A~)."
+                                        (job-identifier job) reason)
                     :identifier (job-identifier job)
-                    :reason reason))))))
+                    :reason     reason))))))
     cancel-p))

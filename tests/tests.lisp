@@ -16,17 +16,17 @@ the worker-loop backstop instead."))
 
 (defclass tests--gate ()
   ((lock
-    :initform (make-lock "cl-jobpond test gate")
-    :reader tests--gate-lock
+    :initform      (make-lock "cl-jobpond test gate")
+    :reader        tests--gate-lock
     :documentation "The lock protecting the open flag.")
    (condition-variable
-    :initform (make-condition-variable)
-    :reader tests--gate-condition-variable
+    :initform      (make-condition-variable)
+    :reader        tests--gate-condition-variable
     :documentation "The condition woken when the gate opens.")
    (open-p
-    :initform nil
-    :accessor tests--gate-open-p
-    :type boolean
+    :initform      nil
+    :accessor      tests--gate-open-p
+    :type          boolean
     :documentation "True once the gate has been opened."))
   (:documentation
    "A one-shot gate letting a test release a blocked job body deterministically."))
@@ -88,18 +88,18 @@ notification only costs latency and never hangs a test."
 
 (defclass tests--counter ()
   ((lock
-    :initform (make-lock "cl-jobpond test counter")
-    :reader tests--counter-lock
+    :initform      (make-lock "cl-jobpond test counter")
+    :reader        tests--counter-lock
     :documentation "The lock protecting the counter fields.")
    (value
-    :initform 0
-    :accessor tests--counter-value
-    :type integer
+    :initform      0
+    :accessor      tests--counter-value
+    :type          integer
     :documentation "The number of job bodies currently inside the counter.")
    (maximum
-    :initform 0
-    :accessor tests--counter-maximum-value
-    :type integer
+    :initform      0
+    :accessor      tests--counter-maximum-value
+    :type          integer
     :documentation "The largest simultaneous occupancy observed so far."))
   (:documentation "A thread-safe occupancy counter observing real concurrency."))
 
@@ -123,13 +123,13 @@ notification only costs latency and never hangs a test."
 
 (defclass tests--collector ()
   ((lock
-    :initform (make-lock "cl-jobpond test collector")
-    :reader tests--collector-lock
+    :initform      (make-lock "cl-jobpond test collector")
+    :reader        tests--collector-lock
     :documentation "The lock protecting the recorded events.")
    (events
-    :initform nil
-    :accessor tests--collector-recorded
-    :type list
+    :initform      nil
+    :accessor      tests--collector-recorded
+    :type          list
     :documentation "The recorded events, newest first."))
   (:documentation "A thread-safe sink recording pool listener events."))
 
@@ -189,49 +189,49 @@ abnormal exit still closes the pool, but leaves the original failure visible."
 ;;;; -- Execution and Result Typing --
 
 (defparameter *tests--execution-cases*
-  (list (list :name "value"
-              :payload 21
-              :body (lambda (job) (* 2 (job-payload job)))
-              :state :completed
-              :result 42
+  (list (list :name     "value"
+              :payload  21
+              :body     (lambda (job) (* 2 (job-payload job)))
+              :state    :completed
+              :result   42
               :report-p nil)
-        (list :name "empty"
-              :payload nil
-              :body (lambda (job) (declare (ignore job)) nil)
-              :state :completed
-              :result nil
+        (list :name     "empty"
+              :payload  nil
+              :body     (lambda (job) (declare (ignore job)) nil)
+              :state    :completed
+              :result   nil
               :report-p nil)
-        (list :name "error"
-              :payload nil
-              :body (lambda (job)
-                      (declare (ignore job))
-                      (error "a deliberate job failure"))
-              :state :failed
-              :result nil
+        (list :name     "error"
+              :payload  nil
+              :body     (lambda (job)
+                          (declare (ignore job))
+                          (error "a deliberate job failure"))
+              :state    :failed
+              :result   nil
               :report-p t)
-        (list :name "abort"
-              :payload nil
-              :body (lambda (job)
-                      (error 'job-aborted
-                             :message "the body aborted itself"
-                             :identifier (job-identifier job)
-                             :reason :self))
-              :state :aborted
-              :result nil
+        (list :name     "abort"
+              :payload  nil
+              :body     (lambda (job)
+                          (error 'job-aborted
+                                 :message    "the body aborted itself"
+                                 :identifier (job-identifier job)
+                                 :reason     :self))
+              :state    :aborted
+              :result   nil
               :report-p t)
-        (list :name "rude"
-              :payload nil
-              :body (lambda (job)
-                      (declare (ignore job))
-                      (error 'tests--rude-condition))
-              :state :failed
-              :result nil
+        (list :name     "rude"
+              :payload  nil
+              :body     (lambda (job)
+                          (declare (ignore job))
+                          (error 'tests--rude-condition))
+              :state    :failed
+              :result   nil
               :report-p t)
-        (list :name "after-rude"
-              :payload 5
-              :body (lambda (job) (1+ (job-payload job)))
-              :state :completed
-              :result 6
+        (list :name     "after-rude"
+              :payload  5
+              :body     (lambda (job) (1+ (job-payload job)))
+              :state    :completed
+              :result   6
               :report-p nil))
   "Job bodies paired with the terminal state and result each must produce.")
 
@@ -239,11 +239,11 @@ abnormal exit still closes the pool, but leaves the original failure visible."
   "Exercise every terminal outcome a job body can produce."
   (with-test-pool (pool :name "cl-jobpond test execution" :maximum-concurrency 1)
     (dolist (case *tests--execution-cases*)
-      (let* ((label (getf case :name))
-             (job (job-pool-submit pool
-                                   (getf case :body)
-                                   :name label
-                                   :payload (getf case :payload)))
+      (let* ((label    (getf case :name))
+             (job      (job-pool-submit pool
+                                        (getf case :body)
+                                        :name    label
+                                        :payload (getf case :payload)))
              (snapshot (tests--await-completed job)))
         (test-assert (eq (getf snapshot :state) (getf case :state))
                      (format nil "the ~A body reaches ~A"
@@ -278,13 +278,13 @@ abnormal exit still closes the pool, but leaves the original failure visible."
 
 (defun tests--identifiers ()
   "Exercise identifier fragments derived from caller-supplied job names."
-  (with-test-pool (pool :name "cl-jobpond test identifiers"
+  (with-test-pool (pool :name                "cl-jobpond test identifiers"
                         :maximum-concurrency 2)
     (let ((jobs (job-pool-submit-batch
                  pool
                  (mapcar (lambda (case)
                            (list :function (lambda (job) (job-identifier job))
-                                 :name (first case)))
+                                 :name     (first case)))
                          *tests--identifier-cases*))))
       (test-assert (= (length jobs) (length *tests--identifier-cases*))
                    "a batch returns one job per entry")
@@ -307,7 +307,7 @@ abnormal exit still closes the pool, but leaves the original failure visible."
 (defun tests--concurrency-bound ()
   "Exercise the hard bound on jobs running at the same time."
   (let ((counter (make-instance 'tests--counter)))
-    (with-test-pool (pool :name "cl-jobpond test concurrency"
+    (with-test-pool (pool :name                "cl-jobpond test concurrency"
                           :maximum-concurrency 2)
       (let ((jobs (loop repeat 6
                         collect
@@ -337,10 +337,10 @@ abnormal exit still closes the pool, but leaves the original failure visible."
   "Exercise the batch-size, live-job, and entry validity refusals."
   (let ((release (tests--make-gate))
         (started (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test bounds"
+    (with-test-pool (pool :name                "cl-jobpond test bounds"
                           :maximum-concurrency 1
-                          :maximum-batch-size 2
-                          :maximum-live-jobs 2)
+                          :maximum-batch-size  2
+                          :maximum-live-jobs   2)
       (let ((blocker (job-pool-submit
                       pool
                       (lambda (job)
@@ -348,9 +348,9 @@ abnormal exit still closes the pool, but leaves the original failure visible."
                         (tests--gate-open started)
                         (tests--gate-await release))
                       :name "blocker"))
-            (queued (job-pool-submit pool
-                                     (lambda (job) (job-identifier job))
-                                     :name "queued")))
+            (queued  (job-pool-submit pool
+                                      (lambda (job) (job-identifier job))
+                                      :name "queued")))
         (test-assert (tests--gate-await started)
                      "the first job starts on the only worker")
         (test-assert (tests--wait-until
@@ -400,7 +400,7 @@ abnormal exit still closes the pool, but leaves the original failure visible."
                        (job-pool-submit-batch
                         pool
                         (list (list :function (lambda (job) job)
-                                    :name :not-a-string))))
+                                    :name     :not-a-string))))
                      "an entry with a non-string name is refused")
         (test-assert (signals job-pool-invalid-limit
                        (job-pool-submit pool
@@ -471,10 +471,10 @@ abnormal exit still closes the pool, but leaves the original failure visible."
 
 (defun tests--policy-default-runtime-boundary ()
   "Force an update between entry normalization and locked admission."
-  (with-test-pool (pool :name "cl-jobpond test policy admission boundary"
-                        :maximum-concurrency 1
+  (with-test-pool (pool :name                         "cl-jobpond test policy admission boundary"
+                        :maximum-concurrency          1
                         :maximum-runtime-milliseconds 0
-                        :start-threads-p nil)
+                        :start-threads-p              nil)
     (let* ((normalized (tests--make-gate))
            (continue   (tests--make-gate))
            (symbol     'cl-jobpond::job-pool--entry-runtime-override)
@@ -510,9 +510,9 @@ abnormal exit still closes the pool, but leaves the original failure visible."
                           "submission normalizes before the policy update")
              (job-pool-update-limits
               pool
-              :maximum-concurrency 1
-              :maximum-batch-size 1
-              :maximum-live-jobs 1
+              :maximum-concurrency          1
+              :maximum-batch-size           1
+              :maximum-live-jobs            1
               :maximum-runtime-milliseconds 1000)
              (tests--gate-open continue)
              (join-thread thread)
@@ -531,17 +531,17 @@ abnormal exit still closes the pool, but leaves the original failure visible."
 (defun tests--pool-limit-updates ()
   "Exercise atomic policy publication and immediate worker capacity changes."
   (tests--policy-default-runtime-boundary)
-  (with-test-pool (pool :name "cl-jobpond test policy validation"
+  (with-test-pool (pool :name                "cl-jobpond test policy validation"
                         :maximum-concurrency 1
-                        :maximum-batch-size 2
-                        :maximum-live-jobs 3
-                        :start-threads-p nil)
+                        :maximum-batch-size  2
+                        :maximum-live-jobs   3
+                        :start-threads-p     nil)
     (let ((before (tests--pool-limits pool)))
       (dolist (case *tests--invalid-policy-update-cases*)
         (let* ((arguments
-                 (list :maximum-concurrency 2
-                       :maximum-batch-size 4
-                       :maximum-live-jobs 5
+                 (list :maximum-concurrency          2
+                       :maximum-batch-size           4
+                       :maximum-live-jobs            5
                        :maximum-runtime-milliseconds 1000))
                (refusal
                  (progn
@@ -564,8 +564,8 @@ abnormal exit still closes the pool, but leaves the original failure visible."
                     (job-pool-update-limits
                      pool
                      :maximum-concurrency 2
-                     :maximum-batch-size 4
-                     :maximum-live-jobs 5)
+                     :maximum-batch-size  4
+                     :maximum-live-jobs   5)
                     nil)
                 (job-pool-invalid-limit (condition) condition))))
         (test-assert
@@ -578,40 +578,40 @@ abnormal exit still closes the pool, but leaves the original failure visible."
       (test-assert
        (eq (job-pool-update-limits
             pool
-            :maximum-concurrency 2
-            :maximum-batch-size 4
-            :maximum-live-jobs 5
+            :maximum-concurrency          2
+            :maximum-batch-size           4
+            :maximum-live-jobs            5
             :maximum-runtime-milliseconds 1000)
            pool)
        "a valid policy update returns its pool")
       (test-assert (equal (tests--pool-limits pool) '(2 4 5 1000))
                    "a valid update publishes all four limits")))
   (let ((name "cl-jobpond test policy deferred"))
-    (with-test-pool (pool :name name
+    (with-test-pool (pool :name                name
                           :maximum-concurrency 1
-                          :start-threads-p nil)
+                          :start-threads-p     nil)
       (test-assert (zerop (tests--pool-thread-count name))
                    "a deferred policy test begins without runtime threads")
       (job-pool-update-limits
        pool
-       :maximum-concurrency 3
-       :maximum-batch-size 3
-       :maximum-live-jobs 3
+       :maximum-concurrency          3
+       :maximum-batch-size           3
+       :maximum-live-jobs            3
        :maximum-runtime-milliseconds 1000)
       (test-assert
        (tests--wait-until (lambda () (= (tests--pool-thread-count name) 4)))
        "raising a deferred policy starts three workers and its deadline monitor")))
-  (with-test-pool (pool :name "cl-jobpond test policy decrease"
+  (with-test-pool (pool :name                "cl-jobpond test policy decrease"
                         :maximum-concurrency 3
-                        :maximum-batch-size 3
-                        :maximum-live-jobs 3)
+                        :maximum-batch-size  3
+                        :maximum-live-jobs   3)
     (let ((counter (make-instance 'tests--counter))
           (release (tests--make-gate)))
       (job-pool-update-limits
        pool
-       :maximum-concurrency 1
-       :maximum-batch-size 3
-       :maximum-live-jobs 3
+       :maximum-concurrency          1
+       :maximum-batch-size           3
+       :maximum-live-jobs            3
        :maximum-runtime-milliseconds 0)
       (let ((jobs
               (job-pool-submit-batch
@@ -628,10 +628,10 @@ abnormal exit still closes the pool, but leaves the original failure visible."
         (tests--gate-open release)
         (dolist (job jobs)
           (tests--await-completed job)))))
-  (with-test-pool (pool :name "cl-jobpond test policy increase"
+  (with-test-pool (pool :name                "cl-jobpond test policy increase"
                         :maximum-concurrency 1
-                        :maximum-batch-size 3
-                        :maximum-live-jobs 3)
+                        :maximum-batch-size  3
+                        :maximum-live-jobs   3)
     (let ((counter (make-instance 'tests--counter))
           (release (tests--make-gate)))
       (let ((jobs
@@ -645,9 +645,9 @@ abnormal exit still closes the pool, but leaves the original failure visible."
          "one job starts before raising the concurrency bound")
         (job-pool-update-limits
          pool
-         :maximum-concurrency 3
-         :maximum-batch-size 3
-         :maximum-live-jobs 3
+         :maximum-concurrency          3
+         :maximum-batch-size           3
+         :maximum-live-jobs            3
          :maximum-runtime-milliseconds 0)
         (test-assert
          (tests--wait-until (lambda () (= (tests--counter-maximum counter) 3)))
@@ -655,18 +655,18 @@ abnormal exit still closes the pool, but leaves the original failure visible."
         (tests--gate-open release)
         (dolist (job jobs)
           (tests--await-completed job)))))
-  (let ((pool (make-job-pool :name "cl-jobpond test closed policy"
+  (let ((pool (make-job-pool :name                "cl-jobpond test closed policy"
                              :maximum-concurrency 1
-                             :start-threads-p nil)))
+                             :start-threads-p     nil)))
     (unwind-protect
          (progn
            (test-assert (job-pool-close pool)
                         "the policy persistence test closes its pool")
            (job-pool-update-limits
             pool
-            :maximum-concurrency 2
-            :maximum-batch-size 3
-            :maximum-live-jobs 4
+            :maximum-concurrency          2
+            :maximum-batch-size           3
+            :maximum-live-jobs            4
             :maximum-runtime-milliseconds 1000)
            (test-assert (equal (tests--pool-limits pool) '(2 3 4 1000))
                         "a closed pool records its next runtime policy")
@@ -696,17 +696,17 @@ abnormal exit still closes the pool, but leaves the original failure visible."
 The guard is what keeps a cancellation aimed at one job from unwinding whichever
 job its worker picked up next, so every state it distinguishes is checked here."
   (with-test-pool (pool :name "cl-jobpond test guard" :maximum-concurrency 1)
-    (let* ((first-job (job-pool-submit pool
-                                       (lambda (job) (job-identifier job))
-                                       :name "first"))
+    (let* ((first-job  (job-pool-submit pool
+                                        (lambda (job) (job-identifier job))
+                                        :name "first"))
            (second-job (job-pool-submit pool
                                         (lambda (job) (job-identifier job))
                                         :name "second")))
       (tests--await-completed first-job)
       (tests--await-completed second-job)
       (dolist (case *tests--interrupt-guard-cases*)
-        (let* ((jobs (list :first first-job :second second-job))
-               (cl-jobpond::*current-job* (getf jobs (getf case :current)))
+        (let* ((jobs                            (list :first first-job :second second-job))
+               (cl-jobpond::*current-job*       (getf jobs (getf case :current)))
                (cl-jobpond::*terminal-publication-job*
                  (getf jobs (getf case :publishing)))
                (cl-jobpond::*current-run-token* (getf case :bound))
@@ -726,8 +726,8 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 
 (defun tests--running-cancellation ()
   "Exercise cancelling a running job and reusing its worker afterwards."
-  (let ((started (tests--make-gate))
-        (never (tests--make-gate))
+  (let ((started       (tests--make-gate))
+        (never         (tests--make-gate))
         (cleanup-ran-p nil))
     (with-test-pool (pool :name "cl-jobpond test cancel" :maximum-concurrency 1)
       (let ((job (job-pool-submit
@@ -770,10 +770,10 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 
 (defun tests--queued-cancellation ()
   "Exercise cancelling a job that no worker has started yet."
-  (let ((release (tests--make-gate))
-        (started (tests--make-gate))
+  (let ((release    (tests--make-gate))
+        (started    (tests--make-gate))
         (body-ran-p nil))
-    (with-test-pool (pool :name "cl-jobpond test queued cancel"
+    (with-test-pool (pool :name                "cl-jobpond test queued cancel"
                           :maximum-concurrency 1)
       (let ((blocker (job-pool-submit
                       pool
@@ -782,11 +782,11 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
                         (tests--gate-open started)
                         (tests--gate-await release))
                       :name "blocker"))
-            (queued (job-pool-submit pool
-                                     (lambda (job)
-                                       (declare (ignore job))
-                                       (setf body-ran-p t))
-                                     :name "queued")))
+            (queued  (job-pool-submit pool
+                                      (lambda (job)
+                                        (declare (ignore job))
+                                        (setf body-ran-p t))
+                                      :name "queued")))
         (test-assert (tests--gate-await started)
                      "the blocking job occupies the only worker")
         (test-assert (tests--wait-until
@@ -818,7 +818,7 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 (defun tests--cooperative-cancellation ()
   "Exercise a body that stops at its own cancellation checks."
   (let ((started (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test cooperative"
+    (with-test-pool (pool :name                "cl-jobpond test cooperative"
                           :maximum-concurrency 1)
       (let ((job (job-pool-submit
                   pool
@@ -848,8 +848,8 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 (defun tests--late-completion-downgrade ()
   "Exercise a cancelled body whose own handler lets it return normally."
   (let ((entered (tests--make-gate))
-        (never (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test downgrade"
+        (never   (tests--make-gate)))
+    (with-test-pool (pool :name                "cl-jobpond test downgrade"
                           :maximum-concurrency 1)
       (let ((job (job-pool-submit
                   pool
@@ -881,8 +881,8 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 (defun tests--pool-deadline ()
   "Exercise the pool-wide wall-clock cap cancelling an overrunning job."
   (let ((never (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test pool deadline"
-                          :maximum-concurrency 1
+    (with-test-pool (pool :name                         "cl-jobpond test pool deadline"
+                          :maximum-concurrency          1
                           :maximum-runtime-milliseconds 50)
       (let ((job (job-pool-submit pool
                                   (lambda (job)
@@ -902,16 +902,16 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 
 (defun tests--job-deadline ()
   "Exercise a per-job wall-clock cap in a pool that has none of its own."
-  (let ((never (tests--make-gate))
+  (let ((never     (tests--make-gate))
         (unbounded (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test job deadline"
-                          :maximum-concurrency 2
+    (with-test-pool (pool :name                         "cl-jobpond test job deadline"
+                          :maximum-concurrency          2
                           :maximum-runtime-milliseconds 0)
       (let ((bounded (job-pool-submit pool
                                       (lambda (job)
                                         (declare (ignore job))
                                         (tests--gate-await never))
-                                      :name "bounded"
+                                      :name                         "bounded"
                                       :maximum-runtime-milliseconds 50))
             (patient (job-pool-submit pool
                                       (lambda (job)
@@ -938,7 +938,7 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
   "Exercise a bounded wait returning before the job is terminal."
   (let ((release (tests--make-gate))
         (started (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test await"
+    (with-test-pool (pool :name                "cl-jobpond test await"
                           :maximum-concurrency 1)
       (let ((job (job-pool-submit pool
                                   (lambda (job)
@@ -969,8 +969,8 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 (defun tests--progress ()
   "Exercise progress reporting, bounded output, and terminal compaction."
   (let ((reported (tests--make-gate))
-        (release (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test progress"
+        (release  (tests--make-gate)))
+    (with-test-pool (pool :name                "cl-jobpond test progress"
                           :maximum-concurrency 1)
       (let ((job (job-pool-submit
                   pool
@@ -1025,14 +1025,14 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 
 (defun tests--listeners ()
   "Exercise lifecycle and progress listeners, including a failing listener."
-  (let ((collector (tests--make-collector))
+  (let ((collector  (tests--make-collector))
         (rude-calls 0))
-    (with-test-pool (pool :name "cl-jobpond test listeners"
+    (with-test-pool (pool :name                "cl-jobpond test listeners"
                           :maximum-concurrency 1)
-      (let ((rude (lambda (channel payload)
-                    (declare (ignore channel payload))
-                    (incf rude-calls)
-                    (error "a listener that misbehaves")))
+      (let ((rude     (lambda (channel payload)
+                        (declare (ignore channel payload))
+                        (incf rude-calls)
+                        (error "a listener that misbehaves")))
             (listener (tests--collector-listener collector)))
         (job-pool-add-listener pool rude)
         (test-assert (eq (job-pool-add-listener pool listener) listener)
@@ -1086,8 +1086,8 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 
 (defun tests--retention-ring ()
   "Exercise the bounded retention ring evicting the oldest terminal jobs."
-  (with-test-pool (pool :name "cl-jobpond test retention"
-                        :maximum-concurrency 1
+  (with-test-pool (pool :name                     "cl-jobpond test retention"
+                        :maximum-concurrency      1
                         :terminal-retention-limit 3)
     (let ((jobs (loop repeat 6
                       collect
@@ -1127,7 +1127,7 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
   "Exercise running a queued job on the calling thread."
   (let ((release (tests--make-gate))
         (started (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test inline"
+    (with-test-pool (pool :name                "cl-jobpond test inline"
                           :maximum-concurrency 1)
       (let ((blocker (job-pool-submit
                       pool
@@ -1136,9 +1136,9 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
                         (tests--gate-open started)
                         (tests--gate-await release))
                       :name "blocker"))
-            (queued (job-pool-submit pool
-                                     (lambda (job) (job-identifier job))
-                                     :name "inline")))
+            (queued  (job-pool-submit pool
+                                      (lambda (job) (job-identifier job))
+                                      :name "inline")))
         (test-assert (tests--gate-await started)
                      "the blocking job occupies the only worker")
         (test-assert (tests--wait-until
@@ -1163,9 +1163,9 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 
 (defun tests--close-and-reopen ()
   "Exercise closing a busy pool, detaching it, and reopening it."
-  (let ((never (tests--make-gate))
+  (let ((never   (tests--make-gate))
         (started (tests--make-gate)))
-    (let ((pool (make-job-pool :name "cl-jobpond test close"
+    (let ((pool (make-job-pool :name                "cl-jobpond test close"
                                :maximum-concurrency 2)))
       (let ((running (list (job-pool-submit
                             pool
@@ -1180,12 +1180,12 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
                               (declare (ignore job))
                               (tests--gate-await never))
                             :name "running")))
-            (queued (list (job-pool-submit pool
-                                           (lambda (job) (job-identifier job))
-                                           :name "queued")
-                          (job-pool-submit pool
-                                           (lambda (job) (job-identifier job))
-                                           :name "queued"))))
+            (queued  (list (job-pool-submit pool
+                                            (lambda (job) (job-identifier job))
+                                            :name "queued")
+                           (job-pool-submit pool
+                                            (lambda (job) (job-identifier job))
+                                            :name "queued"))))
         (test-assert (tests--gate-await started)
                      "a job is running when the pool closes")
         (test-assert (tests--wait-until
@@ -1237,7 +1237,7 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 
 (defun tests--detach-refusal ()
   "Exercise the refusal to detach a pool that never closed."
-  (let ((pool (make-job-pool :name "cl-jobpond test detach"
+  (let ((pool (make-job-pool :name                "cl-jobpond test detach"
                              :maximum-concurrency 1)))
     (let ((refusal (handler-case
                        (progn (job-pool-detach pool) nil)
@@ -1271,43 +1271,43 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 (defun tests--ancestry-cascade ()
   "Exercise job ancestry, descendant lookup, and cascading cancellation."
   (let ((started (tests--make-gate))
-        (never (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test cascade"
+        (never   (tests--make-gate)))
+    (with-test-pool (pool :name                "cl-jobpond test cascade"
                           :maximum-concurrency 4)
-      (let* ((root (job-pool-submit pool
-                                    (lambda (job)
-                                      (declare (ignore job))
-                                      (tests--gate-open started)
-                                      (tests--gate-await never
-                                                         :timeout-seconds 60)
-                                      :root-finished)
-                                    :name "root"
-                                    :root-identifier "tree"))
+      (let* ((root            (job-pool-submit pool
+                                               (lambda (job)
+                                                 (declare (ignore job))
+                                                 (tests--gate-open started)
+                                                 (tests--gate-await never
+                                                                    :timeout-seconds 60)
+                                                 :root-finished)
+                                               :name            "root"
+                                               :root-identifier "tree"))
              (root-identifier (job-identifier root))
-             (child (job-pool-submit pool
-                                     (lambda (job)
-                                       (declare (ignore job))
-                                       (tests--gate-await never
-                                                          :timeout-seconds 60)
-                                       :child-finished)
-                                     :name "child"
-                                     :owner-identifiers (list root-identifier)
-                                     :root-identifier "tree"))
-             (grandchild (job-pool-submit
-                          pool
-                          (lambda (job)
-                            (declare (ignore job))
-                            (tests--gate-await never :timeout-seconds 60)
-                            :grandchild-finished)
-                          :name "grandchild"
-                          :owner-identifiers
-                          (list root-identifier (job-identifier child))
-                          :root-identifier "tree"))
-             (stranger (job-pool-submit pool
-                                        (lambda (job)
-                                          (declare (ignore job))
-                                          :stranger-finished)
-                                        :name "stranger")))
+             (child           (job-pool-submit pool
+                                               (lambda (job)
+                                                 (declare (ignore job))
+                                                 (tests--gate-await never
+                                                                    :timeout-seconds 60)
+                                                 :child-finished)
+                                               :name              "child"
+                                               :owner-identifiers (list root-identifier)
+                                               :root-identifier   "tree"))
+             (grandchild      (job-pool-submit
+                               pool
+                               (lambda (job)
+                                 (declare (ignore job))
+                                 (tests--gate-await never :timeout-seconds 60)
+                                 :grandchild-finished)
+                               :name            "grandchild"
+                               :owner-identifiers
+                               (list root-identifier (job-identifier child))
+                               :root-identifier "tree"))
+             (stranger        (job-pool-submit pool
+                                               (lambda (job)
+                                                 (declare (ignore job))
+                                                 :stranger-finished)
+                                               :name "stranger")))
         (test-assert (equal (job-owner-identifiers grandchild)
                             (list root-identifier (job-identifier child)))
                      "a job records its ancestors outermost first")
@@ -1379,8 +1379,8 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 (defun tests--terminal-result-hook ()
   "Exercise the host hook that decides what a terminal job carries."
   (with-test-pool (pool :name "cl-jobpond test terminal records")
-    (let* ((lock (make-lock "cl-jobpond test hook"))
-           (calls nil)
+    (let* ((lock   (make-lock "cl-jobpond test hook"))
+           (calls  nil)
            (record (lambda (job state result report)
                      (with-lock-held (lock)
                        (push (list (job-identifier job) state result report)
@@ -1390,7 +1390,7 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
                                   (lambda (job)
                                     (declare (ignore job))
                                     :body-value)
-                                  :name "shaped"
+                                  :name                     "shaped"
                                   :terminal-result-function record)))
         (tests--await-completed job)
         (test-assert (equal (job-result job)
@@ -1405,7 +1405,7 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
                                   (lambda (job)
                                     (declare (ignore job))
                                     (error "body refused"))
-                                  :name "failed"
+                                  :name                     "failed"
                                   :terminal-result-function record)))
         (tests--await-completed job)
         (test-assert (eq (job-state job) :failed)
@@ -1460,7 +1460,7 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
                    "a forced failure reports the hook condition")))
   (let ((release (tests--make-gate))
         (started (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test cancelled records"
+    (with-test-pool (pool :name                "cl-jobpond test cancelled records"
                           :maximum-concurrency 1)
       (let ((blocker (job-pool-submit pool
                                       (lambda (job)
@@ -1468,14 +1468,14 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
                                         (tests--gate-open started)
                                         (tests--gate-await release))
                                       :name "blocker"))
-            (queued (job-pool-submit
-                     pool
-                     (lambda (job) (declare (ignore job)) :never-runs)
-                     :name "queued"
-                     :terminal-result-function
-                     (lambda (job state result report)
-                       (declare (ignore job result))
-                       (list :cancelled state :report report)))))
+            (queued  (job-pool-submit
+                      pool
+                      (lambda (job) (declare (ignore job)) :never-runs)
+                      :name "queued"
+                      :terminal-result-function
+                      (lambda (job state result report)
+                        (declare (ignore job result))
+                        (list :cancelled state :report report)))))
         (test-assert (tests--gate-await started)
                      "the blocking job occupies the only worker")
         (test-assert (tests--wait-until
@@ -1496,7 +1496,7 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
      (signals job-pool-invalid-entry
        (job-pool-submit-batch
         pool
-        (list (list :function #'identity
+        (list (list :function                 #'identity
                     :terminal-result-function :not-a-function))))
      "a terminal result hook that is not a function is refused")
     (test-assert (zerop (job-pool-live-count pool))
@@ -1505,16 +1505,16 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 
 (defun tests--inline-only-admission ()
   "Exercise a job admitted without being queued for any worker."
-  (with-test-pool (pool :name "cl-jobpond test inline only"
+  (with-test-pool (pool :name                "cl-jobpond test inline only"
                         :maximum-concurrency 4)
     (let* ((ran-on nil)
-           (job (job-pool-submit pool
-                                 (lambda (job)
-                                   (declare (ignore job))
-                                   (setf ran-on (thread-name (current-thread)))
-                                   :inline-value)
-                                 :name "inline-only"
-                                 :inline-only-p t)))
+           (job    (job-pool-submit pool
+                                    (lambda (job)
+                                      (declare (ignore job))
+                                      (setf ran-on (thread-name (current-thread)))
+                                      :inline-value)
+                                    :name          "inline-only"
+                                    :inline-only-p t)))
       (test-assert (job-inline-only-p job)
                    "an unqueued job reports that only inline running can run it")
       (test-assert (zerop (job-pool-queued-count pool))
@@ -1538,13 +1538,13 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
       (test-assert (not (job-run-inline job))
                    "a second inline runner is told it did not claim the job")))
   (let ((release (tests--make-gate)))
-    (with-test-pool (pool :name "cl-jobpond test inline only cancel"
+    (with-test-pool (pool :name                "cl-jobpond test inline only cancel"
                           :maximum-concurrency 2)
       (let ((job (job-pool-submit pool
                                   (lambda (job)
                                     (declare (ignore job))
                                     (tests--gate-await release))
-                                  :name "inline-cancel"
+                                  :name          "inline-cancel"
                                   :inline-only-p t)))
         (test-assert (job-cancel job :reason :discarded)
                      "an unqueued job accepts cancellation")
@@ -1558,10 +1558,10 @@ publishing ~S, and bound token ~S is ~:[declined~;applied~]"
 (defun tests--deferred-threads ()
   "Exercise a pool that starts no threads until its first admission."
   (let ((before (length (all-threads))))
-    (with-test-pool (pool :name "cl-jobpond test deferred"
-                          :maximum-concurrency 3
+    (with-test-pool (pool :name                         "cl-jobpond test deferred"
+                          :maximum-concurrency          3
                           :maximum-runtime-milliseconds 1000
-                          :start-threads-p nil)
+                          :start-threads-p              nil)
       (test-assert (= (length (all-threads)) before)
                    "a deferred pool starts no thread of its own")
       (test-assert (eq (job-pool-lifecycle-state pool) :open)
