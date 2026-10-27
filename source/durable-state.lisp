@@ -130,7 +130,7 @@ by the store implementation, which must provide atomic replace semantics."
   "Require exactly KEYS once each in a proper portable property list."
   (unless (and (listp value) (= (length value) (* 2 (length keys)))
                (let ((seen nil))
-                 (loop for (key datum) on value by #'cddr
+                 (loop for (key) on value by (lambda (tail) (nthcdr 2 tail))
                        always (and (member key keys) (not (member key seen))
                                    (progn (push key seen) t)))))
     (durable-state--fail ':snapshot))
