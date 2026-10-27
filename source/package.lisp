@@ -1,4 +1,5 @@
 (defpackage #:cl-jobpond
+  (:documentation "A bounded thread pool that runs cancellable jobs and supervises each one to a single terminal result.")
   (:use #:cl)
   (:import-from #:bordeaux-threads
                 #:condition-notify
@@ -102,6 +103,7 @@
            #:make-job-pool))
 
 (defpackage #:cl-jobpond/tests
+  (:documentation "Tests for the cl-jobpond pool, its schedules, mailboxes, and completion subscriptions.")
   (:use #:cl)
   (:import-from #:bordeaux-threads
                 #:all-threads
