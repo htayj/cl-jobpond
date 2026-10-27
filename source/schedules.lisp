@@ -172,7 +172,7 @@ new ID for a replacement version; cancelled IDs cannot be silently resurrected."
        (setf (getf data :schedules) (append (getf data :schedules) (list record)))
        record))))
 
-(defun scheduler--enqueue (data schedule discriminator now &optional event-data)
+(defun scheduler--enqueue (data schedule &key discriminator now event-data)
   "Enqueue one occurrence unless its stable ID was previously retained."
   (let ((identity (list (getf schedule :id) (getf schedule :version) discriminator)))
     (unless (find identity (getf data :wakeups) :key (lambda (w) (getf w :id)) :test #'equal)
@@ -210,7 +210,9 @@ due occurrence, refusing the entire transaction if retention capacity is exceede
                                (:latest (list latest))
                                (:skip (when (= latest now) (list latest))))))
                  (dolist (time times)
-                   (let ((wakeup (scheduler--enqueue data schedule (list :time time) now)))
+                   (let ((wakeup (scheduler--enqueue data schedule
+                                                     :discriminator (list :time time)
+                                                     :now           now)))
                      (when wakeup (push wakeup new))))
                  (setf (getf schedule :next) (and interval (+ latest interval)))))))
          (nreverse new))))))
@@ -232,7 +234,10 @@ due occurrence, refusing the entire transaction if retention capacity is exceede
                     (old (find identity (getf data :wakeups) :key (lambda (w) (getf w :id)) :test #'equal)))
                (when (and old (not (equal payload (getf old :event-data))))
                  (durable-state--fail ':identity-conflict identity))
-               (let ((wakeup (scheduler--enqueue data schedule (list :event id) now payload)))
+               (let ((wakeup (scheduler--enqueue data schedule
+                                                 :discriminator (list :event id)
+                                                 :now           now
+                                                 :event-data    payload)))
                  (when wakeup (push wakeup new))))))
          (nreverse new))))))
 
