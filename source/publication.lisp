@@ -44,7 +44,7 @@ exactly when terminal retention has already evicted it."
 
 ;;;; -- Host Terminal Records --
 
-(defun job--resolve-terminal-record (job state result report)
+(defun job--resolve-terminal-record (job state &key result report)
   "Return JOB's terminal record for STATE as (values result report state).
 
 The library owns the publication claim and the state machine; a host that needs
@@ -131,7 +131,9 @@ terminal record actually contains. See JOB--RESOLVE-TERMINAL-RECORD."
                         (format nil "Job ~A was ~(~A~) as it finished."
                                 (job-identifier job) reason))))
             (multiple-value-setq (final-result final-report state)
-              (job--resolve-terminal-record job state final-result final-report))
+              (job--resolve-terminal-record job state
+                                            :result final-result
+                                            :report final-report))
             (setf final-report
                   (if final-report
                       (jobpond--bounded-string final-report)
