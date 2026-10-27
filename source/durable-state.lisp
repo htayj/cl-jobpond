@@ -75,6 +75,7 @@
   (:documentation "Notify runtime waiters after publication while holding STATE's lock."))
 
 (defmethod durable-state--changed ((state durable-state))
+  "Do nothing; plain durable state has no waiters to notify."
   nil)
 
 (defun durable-state--now (state)

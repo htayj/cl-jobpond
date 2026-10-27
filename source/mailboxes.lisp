@@ -12,6 +12,7 @@
   (:documentation "Bounded queued and unacknowledged messages with durable identity history."))
 
 (defmethod durable-state--changed ((mailbox mailbox))
+  "Wake every waiter registered on MAILBOX."
   (dolist (condition (mailbox--waiters mailbox)) (condition-notify condition)))
 
 (defun mailbox--validate (data)
