@@ -231,9 +231,9 @@ Reconcile current watches first so a failed producer callback can be retried."
   (unless (typep limit '(integer 1 *)) (durable-state--fail ':limit))
   (completion-subscription-refresh subscription)
   (loop repeat limit
-        for record = (mailbox-receive (completion-subscription-mailbox subscription)
+        collect (or (mailbox-receive (completion-subscription-mailbox subscription)
                                      :receiver "completion")
-        while record collect record))
+                    (loop-finish))))
 
 (defun completion-subscription-ack (subscription &key id token result)
   "Acknowledge ID and TOKEN after caller delivery proof is durable."
