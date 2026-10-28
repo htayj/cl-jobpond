@@ -57,10 +57,8 @@ without interrupting a job or retiring a reusable thread in place."
   (setf (job-pool--worker-threads pool)
         (remove-if-not #'thread-alive-p (job-pool--worker-threads pool)))
   (when (eq (job-pool-lifecycle-state pool) :open)
-    (loop repeat (max 0
-                      (- (job-pool-maximum-concurrency pool)
-                         (length (job-pool--worker-threads pool))))
-          for index from (length (job-pool--worker-threads pool))
+    (loop for index from (length (job-pool--worker-threads pool))
+            below (job-pool-maximum-concurrency pool)
           do (push (make-thread
                     (lambda () (job-pool--worker-loop pool))
                     :name (format nil "~A worker ~D"
